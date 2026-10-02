@@ -1,0 +1,57 @@
+<section class="view" id="view-kids" hidden>
+  <div class="k-toran" aria-hidden="true"></div>
+  <header class="k-top">
+    <a href="#" class="k-round" data-t-label="home" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.2 12 3.5l9 7.7V20a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg></a>
+    <div class="k-title"><span data-logo="44"></span><h1 data-t="kidsName">Rangoli for Kids</h1></div>
+    <div class="k-modes" role="tablist" aria-label="Mode">
+      <button type="button" role="tab" data-mode="draw" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20c2 0 3-1 3.5-2.5L17 8l-1.5-1.5-9.5 9.5C4.5 16.5 4 18 4 20zm12.2-14.8 2.6 2.6 1.4-1.4a1.8 1.8 0 0 0 0-2.6l-.1-.1a1.8 1.8 0 0 0-2.6 0z" fill="currentColor"/></svg><span data-t="modeDraw">Draw</span></button>
+      <button type="button" role="tab" data-mode="colour" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c-4.8 0-9 3.6-9 8.2 0 3.3 2.7 5.3 5.6 5.3h1.6c.8 0 1.4.6 1.4 1.4 0 .4-.2.7-.4 1-.2.3-.4.6-.4 1 0 .8.7 1.4 1.6 1.4 5 0 8.6-3.6 8.6-8.6C21 6.4 17 3 12 3zm-5 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3-4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" fill="currentColor"/></svg><span data-t="modeColour">Colour in</span></button>
+    </div>
+    <div class="langs" role="group" aria-label="Language"><button type="button" data-l="mr" lang="mr">मराठी</button><button type="button" data-l="en" lang="en">EN</button><button type="button" data-l="hi" lang="hi">हिंदी</button></div>
+    <button type="button" class="k-round" id="kSound" data-t-label="soundOn"></button>
+  </header>
+
+  <main class="k-main">
+    <!-- DRAW -->
+    <div class="k-layout" id="kDraw">
+      <aside class="k-pots" aria-label="Colours"><div class="k-label" data-t="colours">Colours</div><div class="k-potlist" id="kPots"></div></aside>
+      <div class="k-stage">
+        <p class="k-hint" data-t="drawHint">Draw with your finger. Everything repeats around the middle!</p>
+        <div class="k-frame"><div class="rm-stack" id="kStack"><canvas class="cv-main"></canvas><canvas class="cv-guide"></canvas><canvas class="cv-live"></canvas></div></div>
+        <div class="k-actions">
+          <button type="button" class="k-act" id="kUndo"><span class="ic" data-icon="undo"></span><span data-t="undo">Undo</span></button>
+          <button type="button" class="k-act" id="kClear"><span class="ic" data-icon="trash"></span><span data-t="clear">Clear</span></button>
+          <button type="button" class="k-act magic" id="kSurprise"><span class="ic" data-icon="sparkle"></span><span data-t="surprise">Surprise me</span></button>
+          <button type="button" class="k-act save" id="kSave"><span class="ic" data-icon="save"></span><span data-t="savePic">Save picture</span></button>
+        </div>
+      </div>
+      <aside class="k-panel">
+        <section class="k-group"><h2 class="k-label" data-t="tools">Tools</h2><div class="k-grid3" id="kTools"></div></section>
+        <section class="k-group" id="kStampGroup" hidden><h2 class="k-label" data-t="stickers">Stickers</h2><div class="k-grid4" id="kStamps"></div></section>
+        <section class="k-group" id="kPatGroup" hidden><h2 class="k-label" data-t="patterns">Patterns</h2><div class="k-grid3" id="kPats"></div></section>
+        <section class="k-group" id="kSizeGroup"><h2 class="k-label" data-t="size">Size</h2><div class="k-grid3" id="kSizes"></div></section>
+        <section class="k-group"><h2 class="k-label" data-t="repeats">Repeats</h2><div class="k-grid5" id="kRepeats"></div></section>
+        <section class="k-group"><div class="k-grid2" id="kToggles"></div></section>
+        <section class="k-group"><h2 class="k-label" data-t="kShape">Canvas</h2><div class="k-grid3" id="kShapes"></div></section>
+        <section class="k-group"><h2 class="k-label" data-t="floor">Floor</h2><div class="k-grid4" id="kFloors"></div></section>
+      </aside>
+    </div>
+
+    <!-- COLOUR IN -->
+    <div class="k-layout" id="kColour" hidden>
+      <aside class="k-pots" aria-label="Colours"><div class="k-label" data-t="colours">Colours</div><div class="k-potlist" id="kPots2"></div></aside>
+      <div class="k-stage">
+        <p class="k-hint" data-t="colourHint">Pick a colour pot, then tap a shape to fill it</p>
+        <div class="k-frame k-cframe" id="kCsvg"></div>
+        <div class="k-actions">
+          <button type="button" class="k-act" id="kCUndo"><span class="ic" data-icon="undo"></span><span data-t="undo">Undo</span></button>
+          <button type="button" class="k-act" id="kCReset"><span class="ic" data-icon="trash"></span><span data-t="clearColours">Start over</span></button>
+          <button type="button" class="k-act save" id="kCSave"><span class="ic" data-icon="save"></span><span data-t="savePic">Save picture</span></button>
+        </div>
+      </div>
+      <aside class="k-panel">
+        <section class="k-group"><h2 class="k-label" data-t="designs">Designs</h2><div class="k-tpls" id="kTpls"></div></section>
+      </aside>
+    </div>
+  </main>
+</section>

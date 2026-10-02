@@ -1,0 +1,219 @@
+<section class="view" id="view-studio" hidden>
+  <div class="s-app">
+    <header class="s-bar">
+      <a href="#" class="s-brand" data-t-label="home" aria-label="Home"><span data-logo="26"></span><b data-t="proName">Rangoli Studio</b></a>
+      <div class="s-menu" role="toolbar" aria-label="File">
+        <button type="button" class="s-btn" id="sGallery"><span data-icon="grid"></span><span class="s-txt" data-t="myDesigns">My designs</span></button>
+        <button type="button" class="s-btn" id="sNew"><span data-icon="file"></span><span class="s-txt" data-t="new">New</span></button>
+        <button type="button" class="s-btn" id="sOpen"><span data-icon="open"></span><span class="s-txt" data-t="open">Open</span></button>
+        <input type="file" id="sFile" accept=".json,application/json" hidden>
+        <button type="button" class="s-btn" id="sSaveProj" data-needs-save><span data-icon="save"></span><span class="s-txt" data-t="saveProj">Save project</span></button>
+        <span class="s-sep" aria-hidden="true"></span>
+        <button type="button" class="s-btn s-ico" id="sUndo" data-t-label="undoK"><span data-icon="undo"></span></button>
+        <button type="button" class="s-btn s-ico" id="sRedo" data-t-label="redoK"><span data-icon="redo"></span></button>
+        <span class="s-sep" aria-hidden="true"></span>
+        <div class="s-zoom" role="group" aria-label="Zoom">
+          <button type="button" class="s-btn s-ico" id="sZoomOut" data-t-label="zoomOut"><span data-icon="minus"></span></button>
+          <output id="sZoomVal" class="s-num">100%</output>
+          <button type="button" class="s-btn s-ico" id="sZoomIn" data-t-label="zoomIn"><span data-icon="plus"></span></button>
+          <button type="button" class="s-btn s-ico" id="sFit" data-t-label="fit"><span data-icon="fit"></span></button>
+        </div>
+      </div>
+      <div class="s-right">
+        <button type="button" class="s-btn s-primary" id="sExport"><span data-icon="save"></span><span data-t="export">Export</span></button>
+        <div class="langs" role="group" aria-label="Language"><button type="button" data-l="mr" lang="mr">मरा</button><button type="button" data-l="en" lang="en">EN</button><button type="button" data-l="hi" lang="hi">हिं</button></div>
+        <button type="button" class="s-btn s-ico" id="sFull" data-t-label="fullscreen"><span data-icon="expand"></span></button>
+        <button type="button" class="s-btn s-ico" id="sHelp" data-t-label="shortcuts"><span data-icon="help"></span></button>
+        <button type="button" class="s-btn s-ico" id="sPanel" data-t-label="panel" aria-expanded="false"><span data-icon="sliders"></span></button>
+      </div>
+    </header>
+
+    <nav class="s-rail" id="sRail" aria-label="Tools"></nav>
+
+    <main class="s-work" id="sWork">
+      <div class="s-zoomer" id="sZoomer"><div class="rm-stack" id="sStack"><canvas class="cv-main"></canvas><img class="cv-ref" id="sRefImg" alt="" hidden><canvas class="cv-guide"></canvas><canvas class="cv-live"></canvas></div></div>
+      <button type="button" class="s-edge" id="sEdge" data-t-label="panel" aria-expanded="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </main>
+
+    <aside class="s-insp" id="sInsp" aria-label="Inspector">
+      <!-- SELECTION (only while something is selected) -->
+      <section class="s-sec s-selsec" id="sSelSec" hidden>
+        <div class="s-sechead"><span data-t="selection">Selection</span><output id="sSelCount" class="s-num"></output></div>
+        <div class="s-actgrid">
+          <button type="button" class="s-btn" id="sSelDup"><span data-icon="copy"></span><span data-t="duplicate">Duplicate</span></button>
+          <button type="button" class="s-btn" id="sSelCopy"><span data-t="copy">Copy</span></button>
+          <button type="button" class="s-btn" id="sSelPaste"><span data-t="paste">Paste</span></button>
+          <button type="button" class="s-btn s-danger" id="sSelDel"><span data-icon="trash"></span><span data-t="delete">Delete</span></button>
+          <button type="button" class="s-btn" id="sSelFlipH"><span data-t="flipH">Flip ↔</span></button>
+          <button type="button" class="s-btn" id="sSelFlipV"><span data-t="flipV">Flip ↕</span></button>
+          <button type="button" class="s-btn" id="sSelFwd"><span data-icon="up"></span><span data-t="forward">Forward</span></button>
+          <button type="button" class="s-btn" id="sSelBack"><span data-icon="down"></span><span data-t="backward">Backward</span></button>
+        </div>
+        <div class="s-seg" role="group" id="sPivot"><button type="button" data-v="centre" data-t="aroundCentre">Around rangoli centre</button><button type="button" data-v="own" data-t="aroundOwn">Around itself</button></div>
+        <div class="s-tworow">
+          <div class="s-field"><span class="s-lbl" data-t="resize">Resize</span><div class="s-step"><button type="button" class="s-btn" id="sSelSmaller">−10%</button><button type="button" class="s-btn" id="sSelBigger">+10%</button></div></div>
+          <div class="s-field"><span class="s-lbl" data-t="rotate">Rotate</span><div class="s-step"><button type="button" class="s-btn" id="sSelRotL">−15°</button><button type="button" class="s-btn" id="sSelRotR">+15°</button></div></div>
+        </div>
+        <button type="button" class="s-btn s-wide" id="sSelStyle" data-t="applyStyle">Apply current colour and style</button>
+        <p class="s-help" data-t="selHelp">Drag to move. Arrow keys nudge. Every repeat follows the shape you edit.</p>
+      </section>
+
+      <!-- BRUSH ENGINE -->
+      <details class="s-sec" id="sBrushSec" open>
+        <summary data-t="brushEngine">Brush engine</summary>
+        <div class="s-bgrid" id="sBrushes"></div>
+        <div class="s-field" id="sTipRow"><span class="s-lbl" data-t="customTip">Custom tip</span><div class="s-stamps" id="sTips"></div></div>
+        <div class="s-field"><label for="sW" data-t="size">Size</label><div class="s-pair"><input type="range" id="sW" min="1" max="80"><output id="sWVal" class="s-num"></output></div></div>
+        <div class="s-field"><label for="sO" data-t="opacity">Opacity</label><div class="s-pair"><input type="range" id="sO" min="5" max="100"><output id="sOVal" class="s-num"></output></div></div>
+        <div class="s-field"><label for="sHd" data-t="hardness">Hardness</label><div class="s-pair"><input type="range" id="sHd" min="0" max="100"><output id="sHdVal" class="s-num"></output></div></div>
+        <div class="s-field"><label for="sSp" data-t="spacing">Spacing</label><div class="s-pair"><input type="range" id="sSp" min="20" max="300"><output id="sSpVal" class="s-num"></output></div></div>
+        <div class="s-field"><label for="sSm" data-t="smoothing">Stroke smoothing</label><div class="s-pair"><input type="range" id="sSm" min="0" max="90"><output id="sSmVal" class="s-num"></output></div></div>
+        <div class="s-seg" role="group" id="sTip"><button type="button" data-v="round" data-t="tipRound">Round tip</button><button type="button" data-v="square" data-t="tipSquare">Square tip</button></div>
+        <label class="s-switch"><input type="checkbox" id="sPr"><span class="tr"></span><span data-t="pressure">Pen pressure</span></label>
+        <div class="s-sub" data-t="presets">Brush presets</div>
+        <div class="s-presets" id="sPresets"></div>
+        <div class="s-presave"><input type="text" id="sPresetName" maxlength="24" data-t-ph="presetName" placeholder="Preset name"><button type="button" class="s-btn" id="sPresetSave" data-t="savePreset">Save</button></div>
+      </details>
+
+      <!-- SHAPE / FILL OPTIONS -->
+      <details class="s-sec" id="sShapeSec" open>
+        <summary data-t="shapeOpts">Shape options</summary>
+        <label class="s-switch" id="sFillRow"><input type="checkbox" id="sFill"><span class="tr"></span><span data-t="filled">Filled shape</span></label>
+        <div class="s-field" id="sShapeW"><label for="sW2" data-t="lineWidth">Line width</label><div class="s-pair"><input type="range" id="sW2" min="1" max="80"><output id="sW2Val" class="s-num"></output></div></div>
+        <div class="s-field" id="sPwRow"><label for="sPw" data-t="petalWidth">Petal width</label><div class="s-pair"><input type="range" id="sPw" min="10" max="90"><output id="sPwVal" class="s-num"></output></div></div>
+        <div class="s-field" id="sSidesRow"><label for="sSides" data-t="sides">Polygon sides</label><div class="s-pair"><input type="range" id="sSides" min="3" max="12"><output id="sSidesVal" class="s-num"></output></div></div>
+        <div class="s-field" id="sBendRow"><label for="sBend" data-t="bend">Curve bend</label><div class="s-pair"><input type="range" id="sBend" min="-90" max="90"><output id="sBendVal" class="s-num"></output></div></div>
+        <div class="s-field" id="sStampRow"><span class="s-lbl" data-t="stamp">Stamp</span><div class="s-stamps" id="sStamps"></div></div>
+        <div class="s-field" id="sSzRow"><label for="sSz" data-t="stampSize">Stamp size</label><div class="s-pair"><input type="range" id="sSz" min="2" max="30"><output id="sSzVal" class="s-num"></output></div></div>
+        <div class="s-field" id="sTolRow"><label for="sTol" data-t="tolerance">Fill tolerance</label><div class="s-pair"><input type="range" id="sTol" min="0" max="160"><output id="sTolVal" class="s-num"></output></div></div>
+      </details>
+
+      <!-- TEXT -->
+      <details class="s-sec" id="sTextSec" open>
+        <summary data-t="textSec">Text</summary>
+        <div class="s-field"><label for="sTxt" data-t="textContent">Words</label><input type="text" id="sTxt" maxlength="60"></div>
+        <div class="s-field"><label for="sFont" data-t="font">Font</label><select id="sFont"><option value="Yatra One">Yatra One</option><option value="Baloo 2">Baloo 2</option><option value="Hind">Hind</option><option value="Georgia">Georgia</option></select></div>
+        <div class="s-field"><label for="sTs" data-t="textSize">Text size</label><div class="s-pair"><input type="range" id="sTs" min="2" max="30"><output id="sTsVal" class="s-num"></output></div></div>
+        <label class="s-switch"><input type="checkbox" id="sBold"><span class="tr"></span><span data-t="bold">Bold</span></label>
+        <p class="s-help" data-t="textHelp">Click the canvas to place the words. Set segments to 1 for a single line of text.</p>
+      </details>
+
+      <!-- COLOUR -->
+      <details class="s-sec" open>
+        <summary data-t="colourMgmt">Colour</summary>
+        <div class="s-wheelrow"><canvas id="sWheel" width="336" height="336" aria-label="Colour wheel"></canvas>
+          <div class="s-cvals">
+            <div class="s-dual"><button type="button" class="s-chip big" id="sC1" data-t-label="colour1"></button><button type="button" class="s-chip" id="sC2" data-t-label="colour2"></button><button type="button" class="s-btn s-ico" id="sSwap" data-t-label="swap">⇄</button></div>
+            <input type="text" id="sHex" class="s-hex" maxlength="7" spellcheck="false" aria-label="HEX">
+            <div class="s-rgb"><label>R<input type="number" id="sR" min="0" max="255"></label><label>G<input type="number" id="sG" min="0" max="255"></label><label>B<input type="number" id="sB" min="0" max="255"></label></div>
+            <input type="color" id="sColor" aria-label="System colour picker">
+          </div>
+        </div>
+        <div class="s-seg s-seg5" role="group" id="sPaint"><button type="button" data-v="solid" data-t="pSolid">Solid</button><button type="button" data-v="radial" data-t="pRadial">Radial</button><button type="button" data-v="linear" data-t="pLinear">Linear</button><button type="button" data-v="rainbow" data-t="pRainbow">Rainbow</button><button type="button" data-v="pattern" data-t="pPattern">Pattern</button></div>
+        <div class="s-field" id="sPatRow"><span class="s-lbl" data-t="patternFill">Pattern</span><div class="s-seg" role="group" id="sPat"></div></div>
+        <div class="s-sub" data-t="recent">Recent</div><div class="s-chips2" id="sRecent"></div>
+        <div class="s-sub"><span data-t="favourites">Favourites</span><button type="button" class="s-mini" id="sFavAdd" data-t-label="addFav">＋</button></div><div class="s-chips2" id="sFavs"></div>
+        <div class="s-sub"><select id="sPalette" aria-label="Palette"></select></div><div class="s-swatches" id="sSwatches"></div>
+        <div class="s-sub" data-t="harmony">Colour harmony</div><div class="s-harmony" id="sHarmony"></div>
+        <div class="s-sub" data-t="recolour">Recolour design</div>
+        <p class="s-help" data-t="recolourHelp">Every shape painted in the second colour becomes the main colour.</p>
+        <div class="s-recol"><div class="s-seg" role="group" id="sRecolScope"><button type="button" data-v="layer" data-t="scopeLayer">This layer</button><button type="button" data-v="all" data-t="scopeAll">All layers</button></div><button type="button" class="s-btn s-wide" id="sRecolour" data-t="recolourGo">Replace colour</button></div>
+      </details>
+
+      <!-- REFERENCE IMAGE -->
+      <details class="s-sec" id="sRefSec">
+        <summary data-t="refSec">Reference image</summary>
+        <p class="s-help" data-t="refHelp">Place a photo under your drawing to trace it. It is never exported.</p>
+        <input type="file" id="sRefFile" accept="image/*" hidden>
+        <div class="s-tworow"><button type="button" class="s-btn s-wide" id="sRefLoad"><span data-icon="image"></span><span data-t="refLoad">Choose photo</span></button><button type="button" class="s-btn s-wide s-danger" id="sRefClear" data-t="refRemove">Remove</button></div>
+        <label class="s-switch"><input type="checkbox" id="sRefShow"><span class="tr"></span><span data-t="refShow">Show reference</span></label>
+        <div class="s-field"><label for="sRefOp" data-t="opacity">Opacity</label><div class="s-pair"><input type="range" id="sRefOp" min="5" max="100"><output id="sRefOpVal" class="s-num"></output></div></div>
+        <div class="s-field"><label for="sRefSc" data-t="refScale">Scale</label><div class="s-pair"><input type="range" id="sRefSc" min="20" max="300"><output id="sRefScVal" class="s-num"></output></div></div>
+      </details>
+
+      <!-- EFFECTS -->
+      <details class="s-sec">
+        <summary data-t="effects">Patterns and effects</summary>
+        <div class="s-fxgrid">
+          <label class="s-switch"><input type="checkbox" id="sFxGlow"><span class="tr"></span><span data-t="fxGlow">Glow</span></label>
+          <label class="s-switch"><input type="checkbox" id="sFxGlitter"><span class="tr"></span><span data-t="fxGlitter">Glitter</span></label>
+          <label class="s-switch"><input type="checkbox" id="sFxShadow"><span class="tr"></span><span data-t="fxShadow">Shadow</span></label>
+          <label class="s-switch"><input type="checkbox" id="sFxMetal"><span class="tr"></span><span data-t="fxMetal">Metallic</span></label>
+          <label class="s-switch"><input type="checkbox" id="sFxTex"><span class="tr"></span><span data-t="fxTex">Powder texture</span></label>
+        </div>
+        <p class="s-help" data-t="fxHelp">Blur comes from Hardness in the brush engine. Gradients and pattern fills are under Colour.</p>
+      </details>
+
+      <!-- SYMMETRY -->
+      <details class="s-sec" open>
+        <summary data-t="symmetry">Symmetry</summary>
+        <div class="s-seg" role="group" id="sSym"><button type="button" data-v="radial" data-t="symRadial">Radial</button><button type="button" data-v="tile" data-t="symTile">Repeat grid</button><button type="button" data-v="border" data-t="symBorder">Border</button></div>
+        <div id="sRadialOpts">
+          <div class="s-field"><label for="sN" data-t="segments">Segments</label><div class="s-pair"><input type="range" id="sN" min="1" max="36"><input type="number" id="sNnum" min="1" max="36" class="s-numin"></div></div>
+          <div class="s-chips" id="sNchips"></div>
+          <div class="s-field"><label for="sRot" data-t="rotation">Rotation offset</label><div class="s-pair"><input type="range" id="sRot" min="0" max="359"><output id="sRotVal" class="s-num"></output></div></div>
+          <label class="s-switch"><input type="checkbox" id="sMirror"><span class="tr"></span><span data-t="mirrorP">Mirror within each segment</span></label>
+        </div>
+        <div class="s-field" id="sKRow"><label for="sK" data-t="repeatsK">Repeats per side</label><div class="s-pair"><input type="range" id="sK" min="1" max="8"><output id="sKVal" class="s-num"></output></div></div>
+      </details>
+
+      <!-- MOTIF RING -->
+      <details class="s-sec">
+        <summary data-t="motifRing">Motif ring</summary>
+        <p class="s-help" data-t="motifHelp">Adds a full ring to the active layer using the current colour and symmetry.</p>
+        <div class="s-field"><label for="sMotif" data-t="motifType">Motif</label><select id="sMotif"></select></div>
+        <div class="s-field"><label for="sMr" data-t="radius">Radius</label><div class="s-pair"><input type="range" id="sMr" min="5" max="95"><output id="sMrVal" class="s-num"></output></div></div>
+        <div class="s-field"><label for="sMs" data-t="motifSize">Size</label><div class="s-pair"><input type="range" id="sMs" min="2" max="30"><output id="sMsVal" class="s-num"></output></div></div>
+        <button type="button" class="s-btn s-primary s-wide" id="sAddRing"><span data-icon="plus"></span><span data-t="addRing">Add ring</span></button>
+      </details>
+
+      <!-- GUIDES -->
+      <details class="s-sec">
+        <summary data-t="guides">Guides and snapping</summary>
+        <label class="s-switch"><input type="checkbox" id="sRadial"><span class="tr"></span><span data-t="radialGuides">Segment guides</span></label>
+        <div class="s-field"><label for="sRings" data-t="rings">Concentric rings</label><div class="s-pair"><input type="range" id="sRings" min="0" max="12"><output id="sRingsVal" class="s-num"></output></div></div>
+        <label class="s-switch"><input type="checkbox" id="sDots"><span class="tr"></span><span data-t="kolamGrid">Kolam dot grid</span></label>
+        <div class="s-field" id="sDotsRow"><label for="sDotsN" data-t="dotsAcross">Dots across</label><div class="s-pair"><input type="range" id="sDotsN" min="5" max="31" step="2"><output id="sDotsNVal" class="s-num"></output></div></div>
+        <label class="s-switch"><input type="checkbox" id="sSnap"><span class="tr"></span><span data-t="snap">Snap to guides</span></label>
+      </details>
+
+      <!-- LAYERS -->
+      <details class="s-sec" open>
+        <summary data-t="layers">Layers</summary>
+        <ul class="s-layers" id="sLayers"></ul>
+        <div class="s-ltools">
+          <button type="button" class="s-btn s-ico" id="sLAdd" data-t-label="addLayer"><span data-icon="plus"></span></button>
+          <button type="button" class="s-btn s-ico" id="sLDup" data-t-label="dupLayer"><span data-icon="copy"></span></button>
+          <button type="button" class="s-btn s-ico" id="sLUp" data-t-label="layerUp"><span data-icon="up"></span></button>
+          <button type="button" class="s-btn s-ico" id="sLDown" data-t-label="layerDown"><span data-icon="down"></span></button>
+          <button type="button" class="s-btn" id="sLMerge" data-t-label="mergeDownL"><span data-t="mergeDown">Merge down</span></button>
+          <button type="button" class="s-btn s-ico" id="sLClear" data-t-label="clearLayer"><span data-icon="eraser"></span></button>
+          <button type="button" class="s-btn s-ico s-danger" id="sLDel" data-t-label="delLayer"><span data-icon="trash"></span></button>
+        </div>
+        <div class="s-field"><label for="sLOp" data-t="layerOpacity">Layer opacity</label><div class="s-pair"><input type="range" id="sLOp" min="0" max="100"><output id="sLOpVal" class="s-num"></output></div></div>
+        <div class="s-field"><label for="sBlend" data-t="blendMode">Blend mode</label><select id="sBlend"></select></div>
+      </details>
+
+      <!-- HISTORY -->
+      <details class="s-sec">
+        <summary data-t="history">History</summary>
+        <ol class="s-hist" id="sHist"></ol>
+      </details>
+
+      <!-- CANVAS -->
+      <details class="s-sec" open>
+        <summary data-t="canvasSec">Canvas</summary>
+        <div class="s-field"><span class="s-lbl" data-t="canvasShape">Canvas shape</span><div class="s-seg s-seg5" role="group" id="sShape"></div></div>
+        <div class="s-colour"><input type="color" id="sBg" aria-label="Background"><span class="s-help" data-t="background">Background</span></div>
+        <div class="s-swatches" id="sBgSwatches"></div>
+        <label class="s-switch"><input type="checkbox" id="sTex"><span class="tr"></span><span data-t="floorTex">Floor texture</span></label>
+      </details>
+    </aside>
+
+    <footer class="s-status">
+      <span id="sPos" class="s-num">r 0.00 · θ 0°</span>
+      <span id="sInfo"></span>
+      <span id="sSaved"></span>
+    </footer>
+  </div>
+</section>
