@@ -128,7 +128,8 @@ const go = async h => { w.location.hash = h; w.dispatchEvent(new w.HashChangeEve
   const all = () => sdoc().layers.flatMap(L => L.items);
   const scount = () => (sdoc() ? all().length : 0);
   const slive = $('#sStack .cv-live');
-  check($$('#sRail [data-tool]').length === 14, 'studio rail has 14 tools');
+  check($$('#sRail [data-tool]').length === 15, 'studio rail has 15 tools');
+  check(sdoc() === null || sdoc().board === true, 'studio opens on the infinite board by default'); check($('#sStack').classList.contains('board'), 'infinite board is the default canvas');
   check($$('#sBrushes [data-b]').length === 9, 'brush engine lists 9 brush types');
   click($('#sRail [data-tool="brush"]'));
   for (const b of ['brush', 'pencil', 'pen', 'marker', 'chalk', 'spray', 'airbrush', 'highlighter', 'stampline']) { click($(`#sBrushes [data-b="${b}"]`)); stroke(slive, [[300, 300], [330, 250], [360, 210], [380, 200]]); }
@@ -151,6 +152,7 @@ const go = async h => { w.location.hash = h; w.dispatchEvent(new w.HashChangeEve
   check($$('#sPresets .pre').length === 8, 'custom preset removed');
   // shapes and tools
   for (const tl of ['line', 'curve', 'circle', 'petal', 'poly']) { click($(`#sRail [data-tool="${tl}"]`)); stroke(slive, [[300, 300], [360, 220]]); }
+  click($('#sShape [data-ar="fit"]')); await sleep(700); // flood fill needs a fixed canvas
   for (const tl of ['dot', 'stamp', 'fill']) { click($(`#sRail [data-tool="${tl}"]`)); ptr(slive, 'pointerdown', 250, 250); ptr(slive, 'pointerup', 250, 250); }
   await sleep(700);
   check(['line', 'curve', 'circle', 'petal', 'poly', 'dot', 'stamp', 'fill'].every(t => all().some(i => i.t === t)), 'line, curve, circle, petal, polygon, dot, stamp and fill all add items');
@@ -248,7 +250,7 @@ const go = async h => { w.location.hash = h; w.dispatchEvent(new w.HashChangeEve
   key('t'); check(!$('#sTextSec').hidden, 'text tool shows text settings');
   $('#sTxt').value = 'Shubh Diwali'; $('#sTxt').dispatchEvent(new w.Event('input'));
   ptr(slive, 'pointerdown', 300, 150); ptr(slive, 'pointerup', 300, 150); await sleep(700);
-  const txtItem = all().slice(-1)[0];
+  const txtItem = all().find(i => i.t === 'text') || {};
   check(txtItem.t === 'text' && txtItem.txt === 'Shubh Diwali', 'text placed on the canvas');
   check(/<text[^>]*>Shubh Diwali<\/text>/.test(w.eval('RM.exportSVG(' + JSON.stringify(sdoc()) + ')')), 'text exports to SVG as real text');
   key('i'); ptr(slive, 'pointerdown', 300, 300); await sleep(50);
@@ -325,6 +327,30 @@ const go = async h => { w.location.hash = h; w.dispatchEvent(new w.HashChangeEve
   click($('#sUndo')); await sleep(700);
   check(Math.abs((sdoc().ar || 1) - 1) < 0.01, 'undo returns to square');
   click($('#sRedo')); await sleep(700);
+  // infinite board (draw.io style)
+  click($('#sShape [data-ar="board"]')); await sleep(700);
+  check(sdoc().board === true && $('#sStack').classList.contains('board'), '∞ Infinite turns the canvas into an endless board');
+  const cam0 = JSON.stringify(sdoc().cam);
+  $('#sWork').dispatchEvent(new w.WheelEvent('wheel', { deltaX: 0, deltaY: 120, bubbles: true, cancelable: true })); await sleep(700);
+  const cam1 = sdoc().cam;
+  check(JSON.stringify(cam1) !== cam0 && cam1.z === JSON.parse(cam0 || '{"z":1}').z, 'mouse wheel pans the board without zooming');
+  $('#sWork').dispatchEvent(new w.WheelEvent('wheel', { deltaY: -200, ctrlKey: true, bubbles: true, cancelable: true })); await sleep(700);
+  check(sdoc().cam.z > cam1.z, 'Ctrl + wheel zooms the board');
+  click($('#sRail [data-tool="centre"]'));
+  ptr(slive, 'pointerdown', 560, 80); ptr(slive, 'pointerup', 560, 80); await sleep(700);
+  const cen = sdoc().centre;
+  check(Array.isArray(cen) && (cen[0] !== 0 || cen[1] !== 0), 'Centre tool moves the symmetry centre (' + cen.join(', ') + ')');
+  click($('#sRail [data-tool="dot"]')); ptr(slive, 'pointerdown', 300, 300); ptr(slive, 'pointerup', 300, 300); await sleep(700);
+  const ditems = sdoc().layers.find(L => L.id === sdoc().active).items, dlast = ditems[ditems.length - 1];
+  check(dlast.ox === cen[0] && dlast.oy === cen[1], 'new designs remember their own centre');
+  const bb = w.eval('RM.boardBounds(' + JSON.stringify(sdoc()) + ')');
+  check(bb[2] > cen[0] && bb[1] < cen[1], 'board bounds include the far-away design');
+  const bsvg = w.eval('RM.exportSVG(' + JSON.stringify(sdoc()) + ')');
+  check(!new w.DOMParser().parseFromString(bsvg, 'image/svg+xml').querySelector('parsererror') && !/viewBox="0 0 1000 1000"/.test(bsvg), 'board export crops to the drawing');
+  click($('#sUndo')); click($('#sUndo')); await sleep(700);
+  check(JSON.stringify(sdoc().centre || [0, 0]) !== JSON.stringify(cen), 'undo restores the previous centre');
+  click($('#sShape [data-ar^="1.7"]')); await sleep(700);
+  check(!sdoc().board && Math.abs(sdoc().ar - 16 / 9) < 0.01, 'choosing a fixed shape leaves the board');
   // export window: every format
   const saves = w.__saves;
   click($('#sExport'));

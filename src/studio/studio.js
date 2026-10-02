@@ -60,6 +60,7 @@ RM.addStrings({
   refSec: ['Reference image', 'संदर्भ चित्र', 'संदर्भ चित्र'], refHelp: ['Place a photo under your drawing to trace it. It is never exported.', 'उतारने के लिए अपनी ड्रॉइंग के नीचे फ़ोटो रखें। यह कभी एक्सपोर्ट नहीं होती।', 'गिरवण्यासाठी चित्राखाली फोटो ठेवा. तो कधीही निर्यात होत नाही.'],
   refLoad: ['Choose photo', 'फ़ोटो चुनें', 'फोटो निवडा'], refRemove: ['Remove', 'हटाएँ', 'काढा'], refShow: ['Show reference', 'संदर्भ दिखाएँ', 'संदर्भ दाखवा'], refScale: ['Scale', 'आकार', 'प्रमाण'],
   blendMode: ['Blend mode', 'ब्लेंड मोड', 'मिश्रण पद्धत'], bl_normal: ['Normal', 'सामान्य', 'सामान्य'], bl_multiply: ['Multiply', 'मल्टीप्लाई', 'गुणाकार'], bl_screen: ['Screen', 'स्क्रीन', 'स्क्रीन'], bl_overlay: ['Overlay', 'ओवरले', 'आच्छादन'], bl_darken: ['Darken', 'गहरा', 'गडद'], bl_lighten: ['Lighten', 'हल्का', 'फिकट'], bl_dodge: ['Colour dodge', 'कलर डॉज', 'रंग डॉज'], bl_soft: ['Soft light', 'हल्की रोशनी', 'मंद प्रकाश'],
+  t_centre: ['Centre', 'केंद्र', 'केंद्र'], h_centre: ['Move centre', 'केंद्र बदला', 'केंद्र हलवा'], shapeInfinite: ['Infinite', 'अनंत', 'अनंत'], shapeInfiniteL: ['Endless board — pan and zoom anywhere, like draw.io', 'अंतहीन बोर्ड — कहीं भी खिसकाएँ और ज़ूम करें', 'अमर्याद बोर्ड — कुठेही सरकवा आणि झूम करा'], boardOn: ['Infinite board: wheel to pan, Ctrl + wheel to zoom, O to place a new centre', 'अनंत बोर्ड: व्हील से खिसकाएँ, Ctrl + व्हील से ज़ूम, O से नया केंद्र', 'अमर्याद बोर्ड: व्हीलने सरकवा, Ctrl + व्हीलने झूम, O ने नवीन केंद्र'], fillBoard: ['Fill needs edges — on the infinite board use shapes with Paint fill instead', 'अनंत बोर्ड पर भराव नहीं — आकृतियों में रंग भरें', 'अमर्याद बोर्डवर भराव नाही — आकारांमध्ये रंग भरा'],
   shapeFit: ['Fit', 'फ़िट', 'बसवा'], shapeFitL: ['Fit this screen', 'इस स्क्रीन के अनुसार', 'या स्क्रीननुसार'],
   galTitle: ['My designs', 'मेरे डिज़ाइन', 'माझ्या नक्षी'], saveAsNew: ['Save a copy as new design', 'नई प्रति के रूप में सहेजें', 'नवीन प्रत म्हणून जतन करा'], rename: ['Rename', 'नाम बदलें', 'नाव बदला'], openD: ['Open', 'खोलें', 'उघडा'],
   galNote: ['Designs are kept in this browser. Export a project file to keep a backup or move to another device.', 'डिज़ाइन इसी ब्राउज़र में रहते हैं। बैकअप या दूसरे डिवाइस के लिए प्रोजेक्ट फ़ाइल एक्सपोर्ट करें।', 'नक्षी याच ब्राउझरमध्ये राहतात. बॅकअप किंवा दुसऱ्या डिव्हाइससाठी प्रोजेक्ट फाइल निर्यात करा.'],
@@ -83,9 +84,9 @@ const Studio = (() => {
     peacock: ['#0B3C5D', '#1B998B', '#3BB273', '#C9E265', '#F2C14E', '#2E86AB', '#5C2A9D', '#E0F2E9', '#123524', '#F7F3E3']
   };
   const BGS = ['#1C1426', '#0E1A2B', '#A8482B', '#7A1F2B', '#F3EEE6', '#E9D8B4', '#1D3B2F', '#111111'];
-  const TOOLS = [['select', 'V'], ['brush', 'B'], ['eraser', 'E'], ['fill', 'F'], ['eyedrop', 'I'], ['line', 'L'], ['curve', 'U'], ['circle', 'C'], ['petal', 'P'], ['poly', 'G'], ['dot', 'D'], ['stamp', 'K'], ['text', 'T'], ['pan', 'H']];
-  const KEYTOOL = { v: 'select', b: 'brush', e: 'eraser', f: 'fill', i: 'eyedrop', l: 'line', u: 'curve', c: 'circle', p: 'petal', g: 'poly', d: 'dot', k: 'stamp', t: 'text', h: 'pan' };
-  const ICON = { select: 'select', brush: 'brush', eraser: 'eraser', fill: 'bucket', eyedrop: 'eyedrop', line: 'line', curve: 'curve', circle: 'circle', petal: 'petal', poly: 'poly', dot: 'dot', stamp: 'stamp', text: 'text', pan: 'hand' };
+  const TOOLS = [['select', 'V'], ['brush', 'B'], ['eraser', 'E'], ['fill', 'F'], ['eyedrop', 'I'], ['line', 'L'], ['curve', 'U'], ['circle', 'C'], ['petal', 'P'], ['poly', 'G'], ['dot', 'D'], ['stamp', 'K'], ['text', 'T'], ['centre', 'O'], ['pan', 'H']];
+  const KEYTOOL = { v: 'select', b: 'brush', e: 'eraser', f: 'fill', i: 'eyedrop', l: 'line', u: 'curve', c: 'circle', p: 'petal', g: 'poly', d: 'dot', k: 'stamp', t: 'text', o: 'centre', h: 'pan' };
+  const ICON = { select: 'select', brush: 'brush', eraser: 'eraser', fill: 'bucket', eyedrop: 'eyedrop', line: 'line', curve: 'curve', circle: 'circle', petal: 'petal', poly: 'poly', dot: 'dot', stamp: 'stamp', text: 'text', centre: 'target', pan: 'hand' };
   const BLENDS = [['source-over', 'bl_normal'], ['multiply', 'bl_multiply'], ['screen', 'bl_screen'], ['overlay', 'bl_overlay'], ['darken', 'bl_darken'], ['lighten', 'bl_lighten'], ['color-dodge', 'bl_dodge'], ['soft-light', 'bl_soft']];
   const SHAPES = ['line', 'curve', 'circle', 'petal', 'poly'];
   const PRESETS = [
@@ -127,15 +128,17 @@ const Studio = (() => {
     const b = (c, n, x) => Object.assign({ c, w: 4, o: 1, n, m: true, rot: 0 }, x || {});
     L1.items = [RM.motif('ring', 0.93, 0, b('#FFD23F', 1, { w: 3 })), RM.motif('scallops', 0.83, 0, b('#FF7F11', 24, { w: 4 })), RM.motif('petals', 0.62, 0.26, b('#D7263D', 12, { paint: 'radial', c2: '#FF9F1C' })), RM.motif('petals', 0.62, 0.15, b('#FFD23F', 12, { rot: 15 })), RM.motif('diamonds', 0.38, 0.1, b('#1B998B', 12, { fx: { glow: true } })), RM.motif('petals', 0.2, 0.2, b('#FFFFFF', 8))].filter(Boolean);
     L2.items = [RM.motif('dots', 0.73, 0.05, b('#FFFFFF', 24, { fx: { glitter: true } })), RM.motif('dots', 0.47, 0.04, b('#FFD23F', 12, { rot: 15 })), { t: 'dot', pts: [[0, 0]], w: 40, c: '#FFD23F', n: 1, m: false, o: 1, rot: 0, sym: 'radial', sd: 3, fx: { metal: true } }].filter(Boolean);
-    d.active = L2.id; d.fit = true;
+    d.active = L2.id; d.fit = true; d.board = true;
     return d;
   }
-  function loadDoc() { const d = RM.store.get('rm-studio-doc', null); if (RM.validDoc(d) && d.layers.length) { RM.migrate(d); if (!d.layers.some(L => L.id === d.active)) d.active = d.layers[d.layers.length - 1].id; return d; } return starter(); }
+  // Studio opens designs on the infinite board unless a fixed canvas shape was chosen
+  function toStudio(d) { RM.migrate(d); if (d.board === undefined) d.board = true; return d; }
+  function loadDoc() { const d = RM.store.get('rm-studio-doc', null); if (RM.validDoc(d) && d.layers.length) { toStudio(d); if (!d.layers.some(L => L.id === d.active)) d.active = d.layers[d.layers.length - 1].id; return d; } return starter(); }
 
   /* ---------- history ---------- */
-  const snapshot = () => JSON.stringify({ bg: doc.bg, tex: doc.tex, ar: RM.aspectOf(doc), fit: !!doc.fit, layers: doc.layers, active: doc.active });
+  const snapshot = () => JSON.stringify({ bg: doc.bg, tex: doc.tex, ar: RM.aspectOf(doc), fit: !!doc.fit, board: !!doc.board, centre: doc.centre || [0, 0], layers: doc.layers, active: doc.active });
   function record(label, snap) { undoS.push({ s: snap || snapshot(), label }); if (undoS.length > 80) undoS.shift(); redoS = []; }
-  function restore(json) { const s = JSON.parse(json), oldAr = RM.aspectOf(doc); Object.assign(doc, s); clearSel(); R.setDoc(doc); if (RM.aspectOf(doc) !== oldAr) fit(); refresh(); persist(); }
+  function restore(json) { const s = JSON.parse(json), oldAr = RM.aspectOf(doc), oldB = !!doc.board; Object.assign(doc, s); clearSel(); R.setDoc(doc); if (!!doc.board !== oldB || (!doc.board && RM.aspectOf(doc) !== oldAr)) fit(); refresh(); persist(); }
   const undo = () => { if (!undoS.length) return; const e = undoS.pop(); redoS.push({ s: snapshot(), label: e.label }); restore(e.s); };
   const redo = () => { if (!redoS.length) return; const e = redoS.pop(); undoS.push({ s: snapshot(), label: e.label }); restore(e.s); };
   function persist() { clearTimeout(saveT); $('#sSaved').textContent = ''; saveT = setTimeout(() => { RM.store.set('rm-studio-doc', doc); galWrite(); $('#sSaved').textContent = '✓ ' + RM.t('savedLocal'); }, 500); }
@@ -149,7 +152,7 @@ const Studio = (() => {
 
   /* ---------- items from the current settings ---------- */
   function base() {
-    return { c: P.color, c2: P.c2, paint: P.paint === 'rainbow' ? 'solid' : P.paint, rb: P.paint === 'rainbow', pat: P.pat, w: P.w, o: P.o / 100, n: P.n, m: P.mirror, rot: P.rot, sym: P.sym, k: P.k, fx: Object.assign({}, P.fx), sd: RM.newSeed() };
+    return { c: P.color, c2: P.c2, paint: P.paint === 'rainbow' ? 'solid' : P.paint, rb: P.paint === 'rainbow', pat: P.pat, w: P.w, o: P.o / 100, n: P.n, m: P.mirror, rot: P.rot, sym: P.sym, k: P.k, fx: Object.assign({}, P.fx), sd: RM.newSeed(), ox: centre()[0], oy: centre()[1] };
   }
   function makeItem(p) {
     const b = base();
@@ -170,6 +173,18 @@ const Studio = (() => {
   }
   const snapOpts = () => ({ n: P.n, mirror: P.mirror, rot: P.rot, rings: P.rings, dots: P.dots ? P.dotsN : 0, sym: P.sym, k: P.k, ar: RM.aspectOf(doc) });
   const sp = p => (P.snap ? RM.snap(p, snapOpts()) : p);
+  const centre = () => (Array.isArray(doc.centre) ? doc.centre : [0, 0]);
+  const rel = p => { const c = centre(); return [p[0] - c[0], p[1] - c[1]]; };
+  // World point → coordinates relative to the active symmetry centre, snapped when Snap is on
+  function place(raw) {
+    const c = centre();
+    if (P.snap && P.dots) {
+      const st = 2 / P.dotsN, w = doc.board ? [Math.round(raw[0] / st) * st, Math.round(raw[1] / st) * st] : RM.snap(raw, snapOpts());
+      return [w[0] - c[0], w[1] - c[1]];
+    }
+    const r = rel(raw);
+    return P.snap ? RM.snap(r, Object.assign(snapOpts(), { dots: 0 })) : r;
+  }
   const pressureOf = e => (P.pr && (e.pointerType === 'pen' || (e.pressure > 0 && e.pressure !== 0.5)) ? Math.max(0.05, Math.min(1, e.pressure)) : null);
 
   /* ---------- selection ---------- */
@@ -256,7 +271,7 @@ const Studio = (() => {
         if (drag) { R.hidden = new Set(); R.renderAll(); drag = null; }
         pan = null; marq = null; R.marquee = null;
         const [a, b] = [...touches.values()];
-        pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, m: mid(a, b), z: V.zoom, px: V.panX, py: V.panY };
+        pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, m: mid(a, b), lm: mid(a, b), z: V.zoom, cz: R.cam.z, px: V.panX, py: V.panY };
         e.stopImmediatePropagation();
       }
     }, { capture: true });
@@ -265,6 +280,12 @@ const Studio = (() => {
       touches.set(e.pointerId, [e.clientX, e.clientY]);
       if (!pinch || touches.size < 2) return;
       const [a, b] = [...touches.values()], m = mid(a, b);
+      if (doc.board) {
+        const rect = work.getBoundingClientRect();
+        zoomTo(pinch.cz * (Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d), m[0] - rect.left - rect.width / 2, m[1] - rect.top - rect.height / 2);
+        panBy(m[0] - pinch.lm[0], m[1] - pinch.lm[1]); pinch.lm = m;
+        e.stopImmediatePropagation(); return;
+      }
       V.zoom = Math.max(0.25, Math.min(8, pinch.z * (Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d)));
       V.panX = pinch.px + m[0] - pinch.m[0]; V.panY = pinch.py + m[1] - pinch.m[1];
       applyView(); e.stopImmediatePropagation();
@@ -275,7 +296,7 @@ const Studio = (() => {
     work.addEventListener('pointerdown', e => {
       if (pinch) return;
       const panMode = P.tool === 'pan' || space || e.button === 1;
-      if (panMode) { pan = { x: e.clientX, y: e.clientY, px: V.panX, py: V.panY }; work.setPointerCapture && work.setPointerCapture(e.pointerId); work.classList.add('panning'); e.preventDefault(); return; }
+      if (panMode) { pan = { x: e.clientX, y: e.clientY, px: V.panX, py: V.panY, cam: Object.assign({}, R.cam) }; work.setPointerCapture && work.setPointerCapture(e.pointerId); work.classList.add('panning'); e.preventDefault(); return; }
       if (!st.contains(e.target) || e.button > 0) return;
       const L = active(), raw = R.toNorm(e);
       e.preventDefault();
@@ -299,10 +320,18 @@ const Studio = (() => {
         return;
       }
       if (P.tool === 'eyedrop') { pickColour(e); return; }
+      if (P.tool === 'centre') {
+        record('h_centre');
+        const q = place(raw), c = centre(), r3 = v => Math.round(v * 1000) / 1000;
+        doc.centre = [r3(q[0] + c[0]), r3(q[1] + c[1])];
+        guides(); persist(); syncHistory(); RM.sfx.soft && RM.sfx.soft();
+        return;
+      }
+      if (doc.board && P.tool === 'fill') { RM.toast(RM.t('fillBoard')); return; }
       if (L.locked) { RM.toast(RM.t('lockedMsg')); return; }
       if (L.visible === false) { RM.toast(RM.t('hiddenMsg')); return; }
       const free = P.tool === 'brush' || P.tool === 'eraser';
-      const pr = pressureOf(e), p0 = free ? raw : sp(raw);
+      const pr = pressureOf(e), p0 = free ? rel(raw) : place(raw);
       const it = makeItem(pr != null && free ? [p0[0], p0[1], pr] : p0);
       if (!it) return;
       if (it.t === 'dot' || it.t === 'stamp' || it.t === 'fill' || it.t === 'text') { commit(it); return; }
@@ -311,10 +340,14 @@ const Studio = (() => {
       R.drawLive(drawing);
     });
     work.addEventListener('pointermove', e => {
-      if (pan) { V.panX = pan.px + e.clientX - pan.x; V.panY = pan.py + e.clientY - pan.y; applyView(); return; }
+      if (pan) {
+        if (doc.board) { const Rp = camR(); setCam({ x: pan.cam.x - (e.clientX - pan.x) * pxK() / Rp, y: pan.cam.y - (e.clientY - pan.y) * pxK() / Rp }); }
+        else { V.panX = pan.px + e.clientX - pan.x; V.panY = pan.py + e.clientY - pan.y; applyView(); }
+        return;
+      }
       const raw = R.toNorm(e);
       const r = Math.hypot(raw[0], raw[1]), th = ((Math.atan2(raw[1], raw[0]) * 180) / Math.PI + 450) % 360;
-      $('#sPos').textContent = `r ${r.toFixed(2)} · θ ${th.toFixed(0)}°`;
+      $('#sPos').textContent = doc.board ? `x ${raw[0].toFixed(2)} · y ${raw[1].toFixed(2)}` : `r ${r.toFixed(2)} · θ ${th.toFixed(0)}°`;
       if (marq) { R.marquee = [marq.from[0], marq.from[1], raw[0], raw[1]]; R.drawLive([], sel); return; }
       if (drag) {
         const d = RM.xfDelta([raw[0] - drag.from[0], raw[1] - drag.from[1]], drag.x);
@@ -328,11 +361,11 @@ const Studio = (() => {
           const l = drawing._s, k = 1 - P.sm / 100, s = [l[0] + (raw[0] - l[0]) * k, l[1] + (raw[1] - l[1]) * k];
           drawing._s = s;
           const last = drawing.pts[drawing.pts.length - 1];
-          if (Math.hypot(s[0] - last[0], s[1] - last[1]) > 0.003) { const pr = pressureOf(e); drawing.pts.push(pr != null ? [s[0], s[1], pr] : s); }
-        } else drawing.pts[1] = sp(raw);
+          const q = rel(s); if (Math.hypot(q[0] - last[0], q[1] - last[1]) > 0.003) { const pr = pressureOf(e); drawing.pts.push(pr != null ? [q[0], q[1], pr] : q); }
+        } else drawing.pts[1] = place(raw);
         R.drawLive(drawing);
-      } else if (st.contains(e.target) && !['pan', 'select', 'fill', 'eyedrop', 'text'].includes(P.tool) && !space) {
-        const ghost = Object.assign(base(), { t: 'dot', pts: [sp(raw)], w: Math.max(P.w, 6), c: '#FF9F1C', o: 0.75, paint: 'solid', rb: false, fx: {} });
+      } else if (st.contains(e.target) && !['pan', 'select', 'fill', 'eyedrop', 'text', 'centre'].includes(P.tool) && !space) {
+        const ghost = Object.assign(base(), { t: 'dot', pts: [place(raw)], w: Math.max(P.w, 6), c: '#FF9F1C', o: 0.75, paint: 'solid', rb: false, fx: {} });
         R.drawLive([ghost], sel);
       }
     });
@@ -364,6 +397,11 @@ const Studio = (() => {
     work.addEventListener('wheel', e => {
       e.preventDefault();
       const rect = work.getBoundingClientRect(), mx = e.clientX - rect.left - rect.width / 2, my = e.clientY - rect.top - rect.height / 2;
+      if (doc.board) {
+        if (e.ctrlKey || e.metaKey) zoomTo(R.cam.z * Math.exp(-e.deltaY * 0.0025), mx, my);
+        else panBy(-(e.shiftKey ? e.deltaY : e.deltaX), e.shiftKey ? 0 : -e.deltaY);
+        return;
+      }
       zoomTo(V.zoom * Math.exp(-e.deltaY * 0.0015), mx, my);
     }, { passive: false });
   }
@@ -387,8 +425,16 @@ const Studio = (() => {
   }
 
   /* ---------- zoom & pan ---------- */
+  // Board helpers: canvas pixels per CSS pixel, and pixels per world unit
+  const pxK = () => R.W / ($('#sWork').getBoundingClientRect().width || R.W);
+  const setCam = c => { R.setCamera(c); persist(); };
+  const zoomNow = () => (doc.board ? R.cam.z : V.zoom);
+  const camR = () => (R.S / 2) * R.cam.z;
+  function panBy(dx, dy) { const Rp = camR(); setCam({ x: R.cam.x - dx * pxK() / Rp, y: R.cam.y - dy * pxK() / Rp }); }
   function fitBase() {
-    const w = $('#sWork').getBoundingClientRect();
+    const w = $('#sWork').getBoundingClientRect(), stk = $('#sStack');
+    stk.classList.toggle('board', !!doc.board); $('#sWork').classList.toggle('board', !!doc.board);
+    if (doc.board) { stk.style.width = Math.floor(w.width) + 'px'; stk.style.height = Math.floor(w.height) + 'px'; return; }
     // "Fit" shape: the canvas takes the proportions of this device's workspace
     if (doc.fit && w.width > 50 && w.height > 50) {
       const want = Math.max(0.5, Math.min(2.5, (w.width - 16) / (w.height - 16)));
@@ -398,15 +444,37 @@ const Studio = (() => {
     V.base = Math.max(200, Math.floor(Math.min(w.height - 16, (w.width - 16) / ar)));
     const s = $('#sStack'); s.style.width = Math.round(V.base * ar) + 'px'; s.style.height = V.base + 'px';
   }
-  function applyView() { $('#sZoomer').style.transform = `translate(${V.panX}px, ${V.panY}px) scale(${V.zoom})`; $('#sZoomVal').textContent = Math.round(V.zoom * 100) + '%'; }
+  function applyView() {
+    if (doc.board) { $('#sZoomer').style.transform = 'none'; $('#sZoomVal').textContent = Math.round(R.cam.z * 100) + '%'; return; }
+    $('#sZoomer').style.transform = `translate(${V.panX}px, ${V.panY}px) scale(${V.zoom})`; $('#sZoomVal').textContent = Math.round(V.zoom * 100) + '%';
+  }
   function zoomTo(z, mx, my) {
+    if (doc.board) {
+      // keep the world point under the pointer still
+      const ox = (mx || 0) * pxK(), oy = (my || 0) * pxK(), w0 = R.worldAt(R.W / 2 + ox, R.S / 2 + oy);
+      const nz = Math.max(0.05, Math.min(40, z)), Rn = (R.S / 2) * nz;
+      setCam({ z: nz, x: w0[0] - ox / Rn, y: w0[1] - oy / Rn }); applyView();
+      return;
+    }
     z = Math.max(0.25, Math.min(8, z));
     const k = z / V.zoom; mx = mx || 0; my = my || 0;
     V.panX = mx - (mx - V.panX) * k; V.panY = my - (my - V.panY) * k; V.zoom = z;
     applyView();
     clearTimeout(resT); resT = setTimeout(() => { R.resize(); showSel(); }, 220);
   }
-  const fit = () => { V.zoom = 1; V.panX = 0; V.panY = 0; fitBase(); applyView(); requestAnimationFrame(() => { R.resize(true); showSel(); }); };
+  const fit = () => {
+    V.zoom = 1; V.panX = 0; V.panY = 0; fitBase(); applyView();
+    requestAnimationFrame(() => {
+      R.resize(true);
+      if (doc.board) fitContent();
+      showSel();
+    });
+  };
+  // Infinite board: frame everything that has been drawn
+  function fitContent() {
+    const b = RM.boardBounds(doc), Rn = Math.min(R.W / (b[2] - b[0]), R.S / (b[3] - b[1])) * 0.92;
+    setCam({ x: (b[0] + b[2]) / 2, y: (b[1] + b[3]) / 2, z: Rn / (R.S / 2) }); applyView();
+  }
 
   /* ---------- controls registry ---------- */
   const syncers = [];
@@ -429,7 +497,7 @@ const Studio = (() => {
     box.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { P[key] = b.dataset.v; savePrefs(); show(); if (after) after(); });
   }
   const syncControls = () => syncers.forEach(f => f());
-  const guides = () => R.renderGuides({ radial: P.radial, rings: P.rings, dots: P.dots ? P.dotsN : 0, n: P.n, mirror: P.mirror, rot: P.rot, sym: P.sym, k: P.k });
+  const guides = () => R.renderGuides({ radial: P.radial, rings: P.rings, dots: P.dots ? P.dotsN : 0, n: P.n, mirror: P.mirror, rot: P.rot, sym: P.sym, k: P.k, centre: centre() });
 
   /* ---------- colour ---------- */
   const cur = () => (P.slot === 2 ? P.c2 : P.color);
@@ -572,7 +640,7 @@ const Studio = (() => {
     $('#sHd').closest('.s-field').hidden = t === 'brush' && (dab || P.brush === 'airbrush');
     $('#sSp').closest('.s-field').hidden = !(t === 'brush' && dab);
     $('#sBrushes').hidden = t === 'eraser';
-    $('#sShapeSec').hidden = br || ['select', 'pan', 'eyedrop', 'text'].includes(t);
+    $('#sShapeSec').hidden = br || ['select', 'pan', 'eyedrop', 'text', 'centre'].includes(t);
     $('#sTextSec').hidden = t !== 'text';
     $('#sFillRow').hidden = !['circle', 'petal', 'poly'].includes(t);
     $('#sShapeW').hidden = !['line', 'curve', 'circle', 'petal', 'poly', 'dot'].includes(t);
@@ -680,7 +748,7 @@ const Studio = (() => {
     const st = (type, r, sz, c, n, x) => Object.assign(b(c, n, x), { t: 'stamp', st: type, pts: [[0, -r]], sz, sym: 'radial', sd: RM.newSeed() });
     const mk = (bg, layers) => {
       const d = RM.newDoc(bg, RM.t('baseL'));
-      d.ar = RM.aspectOf(doc); d.fit = !!doc.fit;
+      d.ar = RM.aspectOf(doc); d.fit = !!doc.fit; d.board = doc.board !== false;
       d.layers = layers.map((items, i) => Object.assign(RM.newLayer(RM.t(i ? 'detailsL' : 'baseL')), { items: items.filter(Boolean) }));
       d.active = d.layers[d.layers.length - 1].id;
       return d;
@@ -781,7 +849,7 @@ const Studio = (() => {
     const d = RM.store.get('rm-design-' + id, null);
     if (!RM.validDoc(d) || !d.layers.length) { RM.toast(RM.t('openFail')); return false; }
     galWrite();
-    RM.migrate(d);
+    toStudio(d);
     if (!d.layers.some(L => L.id === d.active)) d.active = d.layers[d.layers.length - 1].id;
     P.docId = id; savePrefs();
     replaceDoc(d); persist();
@@ -851,7 +919,7 @@ const Studio = (() => {
         try {
           const d = JSON.parse(fr.result);
           if (!RM.validDoc(d) || !d.layers.length) throw new Error('bad');
-          RM.migrate(d);
+          toStudio(d);
           d.layers.forEach(L => { L.id = L.id || RM.newLayer('x').id; L.name = String(L.name || 'Layer'); });
           if (!d.layers.some(L => L.id === d.active)) d.active = d.layers[d.layers.length - 1].id;
           record('h_open'); Object.assign(doc, { bg: d.bg, tex: !!d.tex, ar: RM.aspectOf(d), layers: d.layers, active: d.active }); clearSel(); R.setDoc(doc); fit(); refresh(); persist(); RM.toast(RM.t('opened'));
@@ -929,8 +997,8 @@ const Studio = (() => {
       else if (k === '[' || k === ']') { P.w = Math.max(1, Math.min(80, P.w + (k === ']' ? 1 : -1) * Math.max(1, Math.round(P.w * 0.15)))); savePrefs(); syncControls(); }
       else if (k === '0') fit();
       else if (k === '\\') togglePanel();
-      else if (k === '+' || k === '=') zoomTo(V.zoom * 1.25);
-      else if (k === '-') zoomTo(V.zoom / 1.25);
+      else if (k === '+' || k === '=') zoomTo(zoomNow() * 1.25);
+      else if (k === '-') zoomTo(zoomNow() / 1.25);
       else if (k === '?') help();
     });
     addEventListener('keyup', e => { if (e.code === 'Space') { space = false; $('#sWork').classList.toggle('panning', P.tool === 'pan'); } });
@@ -950,12 +1018,13 @@ const Studio = (() => {
   const SHAPE_LABELS = ['1:1', '4:3', '3:2', '16:9', '2:1'];
   function renderShapes() {
     const box = $('#sShape');
-    box.innerHTML = `<button type="button" data-ar="fit" aria-pressed="${!!doc.fit}" title="${RM.t('shapeFitL')}">${RM.t('shapeFit')}</button>` + RM.ASPECTS.map((a, i) => `<button type="button" data-ar="${a}" aria-pressed="${!doc.fit && Math.abs(a - RM.aspectOf(doc)) < 0.01}">${SHAPE_LABELS[i]}</button>`).join('');
+    box.innerHTML = `<button type="button" data-ar="board" aria-pressed="${!!doc.board}" title="${RM.t('shapeInfiniteL')}">∞ ${RM.t('shapeInfinite')}</button><button type="button" data-ar="fit" aria-pressed="${!doc.board && !!doc.fit}" title="${RM.t('shapeFitL')}">${RM.t('shapeFit')}</button>` + RM.ASPECTS.map((a, i) => `<button type="button" data-ar="${a}" aria-pressed="${!doc.board && !doc.fit && Math.abs(a - RM.aspectOf(doc)) < 0.01}">${SHAPE_LABELS[i]}</button>`).join('');
     box.querySelectorAll('[data-ar]').forEach(b => b.onclick = () => {
-      if (b.dataset.ar === 'fit') { if (doc.fit) return; record('h_shape'); doc.fit = true; fit(); renderShapes(); persist(); syncHistory(); return; }
+      if (b.dataset.ar === 'board') { if (doc.board) return; record('h_shape'); doc.board = true; R.setDoc(doc); fit(); renderShapes(); persist(); syncHistory(); RM.toast(RM.t('boardOn')); return; }
+      if (b.dataset.ar === 'fit') { if (doc.fit && !doc.board) return; record('h_shape'); doc.board = false; doc.fit = true; R.setDoc(doc); fit(); renderShapes(); persist(); syncHistory(); return; }
       const a = Number(b.dataset.ar);
-      if (!doc.fit && Math.abs(a - RM.aspectOf(doc)) < 0.01) return;
-      record('h_shape'); doc.fit = false; doc.ar = a; R.setDoc(doc); fit(); renderShapes(); persist(); syncHistory();
+      if (!doc.board && !doc.fit && Math.abs(a - RM.aspectOf(doc)) < 0.01) return;
+      record('h_shape'); doc.board = false; doc.fit = false; doc.ar = a; R.setDoc(doc); fit(); renderShapes(); persist(); syncHistory();
     });
   }
   function renderBgSwatches() {
@@ -1039,7 +1108,7 @@ const Studio = (() => {
     $('#sTex').addEventListener('change', e => { record('h_bg'); doc.tex = e.target.checked; R.composite(); persist(); syncHistory(); });
     bindLayers(); bindFiles();
     $('#sUndo').onclick = undo; $('#sRedo').onclick = redo;
-    $('#sZoomIn').onclick = () => zoomTo(V.zoom * 1.25); $('#sZoomOut').onclick = () => zoomTo(V.zoom / 1.25); $('#sFit').onclick = fit;
+    $('#sZoomIn').onclick = () => zoomTo(zoomNow() * 1.25); $('#sZoomOut').onclick = () => zoomTo(zoomNow() / 1.25); $('#sFit').onclick = fit;
     $('#sHelp').onclick = help;
     $('#sPanel').onclick = togglePanel;
     $('#sEdge').onclick = togglePanel;

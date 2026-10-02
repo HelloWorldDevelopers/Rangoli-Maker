@@ -54,7 +54,7 @@
     blendMode: ['How a layer mixes with the layers below. Multiply darkens, Screen lightens, Overlay adds contrast.', 'परत नीचे वाली परतों से कैसे मिले। मल्टीप्लाई गहरा, स्क्रीन हल्का, ओवरले कंट्रास्ट बढ़ाता है।', 'स्तर खालच्या स्तरांमध्ये कसा मिसळेल. गुणाकार गडद करतो, स्क्रीन फिकट करतो, आच्छादन कॉन्ट्रास्ट वाढवतो.'],
     layerOpacity: ['How see-through the whole layer is.', 'पूरी परत कितनी पारदर्शी हो।', 'संपूर्ण स्तर किती पारदर्शक असावा.'],
     history: ['Every change you made, newest first. Click a step to go back to it; Redo brings changes back.', 'आपके सभी बदलाव, नए सबसे ऊपर। किसी कदम पर वापस जाने के लिए क्लिक करें; फिर करें से बदलाव लौटते हैं।', 'तुम्ही केलेले सगळे बदल, नवीन वर. त्या टप्प्यावर परत जाण्यासाठी क्लिक करा; पुन्हा करा ने बदल परत येतात.'],
-    canvasShape: ['The canvas proportions. Fit matches your screen; 1:1 is square; 16:9 and 2:1 are wide, good for doorway borders. Exports use this shape.', 'कैनवास का अनुपात। फ़िट = आपकी स्क्रीन जैसा; 1:1 = वर्ग; 16:9 और 2:1 चौड़े, द्वार किनारी के लिए अच्छे। एक्सपोर्ट इसी आकार में होता है।', 'कॅनव्हासचं प्रमाण. बसवा = तुमच्या स्क्रीनसारखं; 1:1 = चौरस; 16:9 आणि 2:1 रुंद, दाराच्या किनारीसाठी चांगले. निर्यात याच आकारात होते.'],
+    canvasShape: ['∞ Infinite gives an endless board like draw.io: wheel or Pan tool to move, Ctrl + wheel or pinch to zoom, Fit (0) frames your drawing, and exports crop to what you drew. The other options are fixed canvas proportions.', '∞ अनंत = draw.io जैसा अंतहीन बोर्ड: व्हील/पैन से खिसकाएँ, Ctrl + व्हील या पिंच से ज़ूम, फ़िट (0) चित्र दिखाता है, एक्सपोर्ट चित्र तक कटता है। बाकी विकल्प तय अनुपात हैं।', '∞ अमर्याद = draw.io सारखा अंतहीन बोर्ड: व्हील/पॅनने सरकवा, Ctrl + व्हील किंवा पिंचने झूम, बसवा (0) चित्र दाखवते, निर्यात चित्रापुरती कापली जाते. बाकी पर्याय ठराविक प्रमाण आहेत.'],
     background: ['The floor colour behind your rangoli.', 'रंगोली के पीछे ज़मीन का रंग।', 'रांगोळीमागच्या जमिनीचा रंग.'],
     floorTex: ['Adds a subtle grain to the background, like a real floor.', 'पृष्ठभूमि में हल्की बनावट, असली ज़मीन जैसी।', 'पार्श्वभूमीला हलका पोत, खऱ्या जमिनीसारखा.'],
     // ---- Kids ----
@@ -84,6 +84,7 @@
     dot: ['Click to place dots.', 'बिंदु रखने के लिए क्लिक करें।', 'ठिपके ठेवण्यासाठी क्लिक करा.'],
     stamp: ['Click to place a motif such as a flower, diya or mango.', 'फूल, दीया या कैरी जैसा रूप रखने के लिए क्लिक करें।', 'फूल, पणती किंवा कोयरीसारखा आकार ठेवण्यासाठी क्लिक करा.'],
     text: ['Click to place words such as a festival greeting.', 'त्योहार की शुभकामना जैसे शब्द रखने के लिए क्लिक करें।', 'सणाच्या शुभेच्छांसारखे शब्द ठेवण्यासाठी क्लिक करा.'],
+    centre: ['Click to set where the next designs are centred. On the infinite board you can build many rangolis side by side, each with its own symmetry centre (orange cross).', 'अगले डिज़ाइन का केंद्र चुनने के लिए क्लिक करें। अनंत बोर्ड पर कई रंगोलियाँ अगल-बगल बनाएँ, हर एक का अपना केंद्र (नारंगी क्रॉस)।', 'पुढच्या डिझाइनचं केंद्र ठरवण्यासाठी क्लिक करा. अमर्याद बोर्डवर अनेक रांगोळ्या शेजारी शेजारी काढा, प्रत्येकीचं स्वतःचं केंद्र (नारिंगी क्रॉस).'],
     pan: ['Drag to move around the canvas. You can also hold Space and drag.', 'कैनवास पर घूमने के लिए खींचें। स्पेस दबाकर भी खींच सकते हैं।', 'कॅनव्हासवर फिरण्यासाठी ओढा. स्पेस दाबूनही ओढू शकता.']
   };
   const BAR_HELP = [

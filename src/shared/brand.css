@@ -145,3 +145,4 @@ summary .rm-hi { margin-right: auto; }
 .s-glist .gi svg { width: 18px; height: 18px; }
 .s-glist kbd { font: 600 .74rem/1 ui-monospace, Consolas, monospace; padding: 3px 5px; border-radius: 5px; background: #221E2C; border: 1px solid #2F2A3C; }
 .s-guide .tip { margin: 14px 0 0; color: #9C95AF; font-size: .88rem; }
+.rm-stack.board { aspect-ratio: auto; max-width: none; }

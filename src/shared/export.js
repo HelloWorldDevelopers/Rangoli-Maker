@@ -95,7 +95,7 @@ RM.addStrings({
     await new Promise(resolve => {
       const frame = () => {
         const t = performance.now() - t0, target = Math.min(items.length, Math.ceil(items.length * Math.min(1, t / build)));
-        while (drawn < target) { const [li, it] = items[drawn++]; RM.drawItem(layers[li].getContext('2d'), it, H / 2); }
+        while (drawn < target) { const [li, it] = items[drawn++], em = RM.exportMap(doc, W, H); RM.drawItem(layers[li].getContext('2d'), it, em.R, { cx: em.cx, cy: em.cy }); }
         RM.paintBackground(g, doc, W, H);
         doc.layers.forEach((L, i) => { if (L.visible === false) return; g.globalAlpha = L.opacity != null ? L.opacity : 1; g.globalCompositeOperation = L.blend || 'source-over'; g.drawImage(layers[i], 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; });
         if (onProgress) onProgress(Math.min(1, t / total));

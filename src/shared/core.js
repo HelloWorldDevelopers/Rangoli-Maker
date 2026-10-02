@@ -283,8 +283,8 @@ const RM = (() => {
   }
   // R is half the canvas height (the drawing scale); the centre is the middle of the canvas, so wide canvases work too
   const centreX = (g, R) => { const w = g && g.canvas && g.canvas.width; return typeof w === 'number' && w > 0 ? w / 2 : R; };
-  function applyX(g, R, x) { g.translate(centreX(g, R), R); g.rotate(x.a); g.scale(x.m, 1); if (x.tx || x.ty) g.translate(x.tx * R, x.ty * R); }
-  function xfPoint(p, x, R, cx) { const X = (p[0] + x.tx * R) * x.m, Y = p[1] + x.ty * R, c = Math.cos(x.a), s = Math.sin(x.a); return [(cx != null ? cx : R) + X * c - Y * s, R + X * s + Y * c]; }
+  function applyX(g, R, x, cx, cy) { g.translate(cx != null ? cx : centreX(g, R), cy != null ? cy : R); g.rotate(x.a); g.scale(x.m, 1); if (x.tx || x.ty) g.translate(x.tx * R, x.ty * R); }
+  function xfPoint(p, x, R, cx, cy) { const X = (p[0] + x.tx * R) * x.m, Y = p[1] + x.ty * R, c = Math.cos(x.a), s = Math.sin(x.a); return [(cx != null ? cx : R) + X * c - Y * s, (cy != null ? cy : R) + X * s + Y * c]; }
   function xfInverse(px, x, R) { const X = px[0] - R, Y = px[1] - R, c = Math.cos(-x.a), s = Math.sin(-x.a); const rx = X * c - Y * s, ry = X * s + Y * c; return [rx * x.m - x.tx * R, ry - x.ty * R]; }
   function xfDelta(d, x) { const c = Math.cos(-x.a), s = Math.sin(-x.a); return [(d[0] * c - d[1] * s) * x.m, d[0] * s + d[1] * c]; }
 
@@ -365,7 +365,9 @@ const RM = (() => {
   }
   function drawItem(g, it, R, opt) {
     opt = opt || {};
-    if (it.t === 'fill') { if (!opt.preview) drawFill(g, it, R); return; }
+    if (it.t === 'fill') { if (!opt.preview) drawFill(g, it, R, opt); return; }
+    // where this item's symmetry centre lands on the canvas: the view's origin plus the item's own offset
+    const ccx = (opt.cx != null ? opt.cx : centreX(g, R)) + (it.ox || 0) * R, ccy = (opt.cy != null ? opt.cy : R) + (it.oy || 0) * R;
     const geo = geom(it, R);
     if (!geo.p2d) return;
     const kind = it.t === 'stroke' ? KIND[it.brush || 'brush'] || KIND.brush : KIND.brush;
@@ -379,7 +381,7 @@ const RM = (() => {
     if (it.e && !preview) g.globalCompositeOperation = 'destination-out';
     for (const x of xforms(it)) {
       g.save();
-      applyX(g, R, x);
+      applyX(g, R, x, ccx, ccy);
       const style = opt.outline ? opt.outline : it.e && preview ? 'rgba(255,255,255,0.55)' : paintStyle(g, it, x, R, geo.box);
       g.fillStyle = style; g.strokeStyle = style;
       if (opt.outline) { g.globalAlpha = 1; g.setLineDash && g.setLineDash([R * 0.012, R * 0.01]); g.lineWidth = Math.max(1.5, R * 0.004); const o = geo.box; g.strokeRect(o[0], o[1], o[2] - o[0], o[3] - o[1]); g.restore(); continue; }
@@ -401,13 +403,13 @@ const RM = (() => {
   }
 
   /* ---------- bucket fill (raster, replayed in order so undo and export stay exact) ---------- */
-  function fillCanvas(src, it, R) {
+  function fillCanvas(src, it, R, ocx, ocy) {
     const S = src.width, H = src.height || S, sg = src.getContext('2d');
     if (!sg || !sg.getImageData || !S) return null;
     let img;
     try { img = sg.getImageData(0, 0, S, H); } catch (e) { return null; }
     const d = img.data, N = S * H, mask = new Uint8Array(N), tol = it.tol != null ? it.tol : 40;
-    const seeds = xforms(it).map(x => xfPoint([it.pts[0][0] * R, it.pts[0][1] * R], x, R, S / 2)).map(p => [Math.round(p[0]), Math.round(p[1])]).filter(p => p[0] >= 0 && p[1] >= 0 && p[0] < S && p[1] < H);
+    const seeds = xforms(it).map(x => xfPoint([it.pts[0][0] * R, it.pts[0][1] * R], x, R, (ocx != null ? ocx : S / 2) + (it.ox || 0) * R, (ocy != null ? ocy : R) + (it.oy || 0) * R)).map(p => [Math.round(p[0]), Math.round(p[1])]).filter(p => p[0] >= 0 && p[1] >= 0 && p[0] < S && p[1] < H);
     const stack = [];
     for (const [sx, sy] of seeds) {
       const si = sy * S + sx;
@@ -449,10 +451,10 @@ const RM = (() => {
     if (it.fx && it.fx.glitter) { const r = rng((it.sd || 7) + 11); for (let i = 0; i < 260; i++) { og.fillStyle = r() < 0.6 ? 'rgba(255,255,255,0.9)' : 'rgba(255,224,130,0.9)'; og.beginPath(); og.arc(r() * S, r() * H, Math.max(0.6, R * 0.004 + r() * R * 0.004), 0, 7); og.fill(); } }
     return out;
   }
-  function drawFill(g, it, R) {
+  function drawFill(g, it, R, opt) {
     const src = g.canvas;
     if (!src) return;
-    const fc = fillCanvas(src, it, R);
+    const fc = fillCanvas(src, it, R, opt && opt.cx, opt && opt.cy);
     if (!fc) return;
     g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = it.e ? 'destination-out' : 'source-over'; g.globalAlpha = it.o != null ? it.o : 1; g.drawImage(fc, 0, 0); g.restore();
   }
@@ -483,7 +485,25 @@ const RM = (() => {
   }
   // Canvas shape: width ÷ height. Square is 1.
   const ASPECTS = [1, 4 / 3, 3 / 2, 16 / 9, 2];
-  const aspectOf = doc => { const a = Number(doc && doc.ar); return a > 0.4 && a < 3 ? a : 1; };
+  const aspectOf = doc => { if (doc && doc.board) { const b = boardBounds(doc); return Math.max(0.2, Math.min(5, (b[2] - b[0]) / (b[3] - b[1]))); } const a = Number(doc && doc.ar); return a > 0.4 && a < 3 ? a : 1; };
+  // How far each item reaches from its own centre, so a board export can crop to what is drawn
+  function itemReach(it) {
+    const pts = it.pts || [[0, 0]], far = Math.max(0, ...pts.map(p => Math.hypot(p[0], p[1])));
+    const a = pts[0] || [0, 0], b = pts[1] || a, span = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const extra = it.t === 'stamp' ? (it.sz || 0.06) * 1.3 : it.t === 'text' ? (it.ts || 0.08) * Math.max(1, String(it.txt || '').length) * 0.32 : ['circle', 'poly'].includes(it.t) ? span : ((it.w || 4) / 500) * 1.5;
+    let reach = far + extra;
+    if (it.sym === 'tile' || it.sym === 'border') { const k = Math.max(1, it.k || 3); reach += ((k - 1) * 2) / k + (it.sym === 'border' ? 1 : 0); }
+    return reach;
+  }
+  function boardBounds(doc) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    (doc.layers || []).forEach(L => { if (L.visible === false) return; L.items.forEach(it => { if (it.e) return; const r = itemReach(it), ox = it.ox || 0, oy = it.oy || 0; x0 = Math.min(x0, ox - r); y0 = Math.min(y0, oy - r); x1 = Math.max(x1, ox + r); y1 = Math.max(y1, oy + r); }); });
+    if (!isFinite(x0)) return [-1, -1, 1, 1];
+    const pad = Math.max(x1 - x0, y1 - y0) * 0.05;
+    return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
+  }
+  // World units → export pixels for a W×H output
+  function exportMap(doc, W, H) { if (!doc.board) return { R: H / 2, cx: W / 2, cy: H / 2 }; const b = boardBounds(doc), R = H / (b[3] - b[1]); return { R, cx: -b[0] * R, cy: -b[1] * R }; }
   const dims = (doc, S) => { const a = aspectOf(doc); return a >= 1 ? [S, Math.round(S / a)] : [Math.round(S * a), S]; };
 
   /* ---------- renderer: artwork, guides and live canvases ---------- */
@@ -492,18 +512,34 @@ const RM = (() => {
       this.stack = stack;
       this.main = stack.querySelector('.cv-main'); this.guide = stack.querySelector('.cv-guide'); this.live = stack.querySelector('.cv-live');
       this.cache = new Map(); this.S = 0; this.W = 0; this.doc = null; this.hidden = new Set();
-      this.guides = { radial: false, rings: 0, dots: 0, n: 8, mirror: true, rot: 0, sym: 'radial', k: 4 };
+      this.cam = { x: 0, y: 0, z: 1 };
+      this.guides = { radial: false, rings: 0, dots: 0, n: 8, mirror: true, rot: 0, sym: 'radial', k: 4, centre: [0, 0], grid: true };
     }
     ctx(cv) { return cv.getContext('2d'); }
-    // S is the canvas height in pixels (the drawing scale); W is the width, wider for non-square shapes
+    get board() { return !!(this.doc && this.doc.board); }
+    // Drawing scale and where the world origin sits on the canvas.
+    // Fixed canvas: origin at the middle, one unit = half the height. Infinite board: from the camera.
+    get map() {
+      const S = this.S, W = this.W || S;
+      if (!this.board) return { R: S / 2, cx: W / 2, cy: S / 2 };
+      const R = (S / 2) * this.cam.z;
+      return { R, cx: W / 2 - this.cam.x * R, cy: S / 2 - this.cam.y * R };
+    }
+    // S is the canvas height in pixels; W is the width (wider for non-square shapes, the whole workspace on a board)
     resize(force) {
       const ar = aspectOf(this.doc);
-      this.stack.style.setProperty('--ar', String(ar));
+      if (!this.board) this.stack.style.setProperty('--ar', String(ar));
       const r = this.main.getBoundingClientRect();
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      let S = Math.round(((r.height || (r.width || 600) / ar) || 600) * dpr), W = Math.round(S * ar);
-      if (W > 2400) { W = 2400; S = Math.round(W / ar); }
-      if (S > 2048) { S = 2048; W = Math.round(S * ar); }
+      let S, W;
+      if (this.board) {
+        W = Math.round((r.width || 600) * dpr); S = Math.round((r.height || r.width || 600) * dpr);
+        const k = Math.min(1, 2400 / Math.max(W, S)); W = Math.round(W * k); S = Math.round(S * k);
+      } else {
+        S = Math.round(((r.height || (r.width || 600) / ar) || 600) * dpr); W = Math.round(S * ar);
+        if (W > 2400) { W = 2400; S = Math.round(W / ar); }
+        if (S > 2048) { S = 2048; W = Math.round(S * ar); }
+      }
       S = Math.max(64, S); W = Math.max(64, W);
       if (!force && S === this.S && W === this.W) return;
       this.S = S; this.W = W;
@@ -512,7 +548,16 @@ const RM = (() => {
       if (this.doc) this.renderAll();
       this.renderGuides();
     }
-    setDoc(doc) { this.doc = doc; this.cache.clear(); this.stack.style.setProperty('--ar', String(aspectOf(doc))); if (this.S) this.resize(true); }
+    setDoc(doc) { this.doc = doc; this.cache.clear(); if (doc && doc.cam) this.cam = Object.assign({ x: 0, y: 0, z: 1 }, doc.cam); if (!this.board) this.stack.style.setProperty('--ar', String(aspectOf(doc))); if (this.S) this.resize(true); }
+    // Board camera moves redraw everything, at most once per frame
+    setCamera(cam) {
+      Object.assign(this.cam, cam);
+      this.cam.z = Math.max(0.05, Math.min(40, this.cam.z));
+      if (this.doc) this.doc.cam = { x: this.cam.x, y: this.cam.y, z: this.cam.z };
+      if (this.camFrame) return;
+      this.camFrame = requestAnimationFrame(() => { this.camFrame = 0; this.renderAll(); this.renderGuides(); });
+    }
+    worldAt(px, py) { const m = this.map; return [(px - m.cx) / m.R, (py - m.cy) / m.R]; }
     layerCanvas(L) {
       let c = this.cache.get(L.id);
       if (!c || c.width !== this.W || c.height !== this.S) { c = document.createElement('canvas'); c.width = this.W; c.height = this.S; this.cache.set(L.id, c); this.paintLayer(L, c); }
@@ -523,7 +568,8 @@ const RM = (() => {
       const g = this.ctx(c);
       if (!g) return;
       g.clearRect(0, 0, this.W, this.S);
-      L.items.forEach(it => { if (!this.hidden.has(it)) drawItem(g, it, this.S / 2); });
+      const m = this.map;
+      L.items.forEach(it => { if (!this.hidden.has(it)) drawItem(g, it, m.R, { cx: m.cx, cy: m.cy }); });
     }
     renderAll() { if (!this.doc) return; this.doc.layers.forEach(L => { const c = this.cache.get(L.id); if (c && c.width === this.W && c.height === this.S) this.paintLayer(L, c); else this.layerCanvas(L); }); this.composite(); }
     composite() {
@@ -534,7 +580,7 @@ const RM = (() => {
       this.doc.layers.forEach(L => { if (L.visible === false) return; g.globalAlpha = L.opacity != null ? L.opacity : 1; g.globalCompositeOperation = L.blend || 'source-over'; g.drawImage(this.layerCanvas(L), 0, 0); });
       g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
     }
-    commit(L, it) { const g = this.ctx(this.layerCanvas(L)); if (g) drawItem(g, it, this.S / 2); this.composite(); this.clearLive(); }
+    commit(L, it) { const g = this.ctx(this.layerCanvas(L)), m = this.map; if (g) drawItem(g, it, m.R, { cx: m.cx, cy: m.cy }); this.composite(); this.clearLive(); }
     clearLive() { this.cancelLive(); const g = this.ctx(this.live); if (g) g.clearRect(0, 0, this.W, this.S); }
     cancelLive() { if (this.liveFrame) { cancelAnimationFrame(this.liveFrame); this.liveFrame = 0; } this.livePending = null; }
     // Pointer events can arrive far faster than the screen refreshes; draw at most once per frame
@@ -547,54 +593,82 @@ const RM = (() => {
       const g = this.ctx(this.live);
       if (!g) return;
       g.clearRect(0, 0, this.W, this.S);
-      (Array.isArray(items) ? items : [items]).forEach(it => it && drawItem(g, it, this.S / 2, { preview: true }));
-      (outline || []).forEach(it => it && drawItem(g, it, this.S / 2, { preview: true, outline: 'rgba(255,159,28,0.95)' }));
-      const m = this.marquee;
-      if (m) {
-        const R = this.S / 2, cx = this.W / 2, x0 = cx + Math.min(m[0], m[2]) * R, y0 = R + Math.min(m[1], m[3]) * R;
-        g.save(); g.fillStyle = 'rgba(255,159,28,0.10)'; g.strokeStyle = 'rgba(255,159,28,0.95)'; g.lineWidth = Math.max(1.5, R * 0.004);
-        g.setLineDash && g.setLineDash([R * 0.015, R * 0.01]);
-        g.fillRect(x0, y0, Math.abs(m[2] - m[0]) * R, Math.abs(m[3] - m[1]) * R); g.strokeRect(x0, y0, Math.abs(m[2] - m[0]) * R, Math.abs(m[3] - m[1]) * R);
+      const m = this.map, o = { cx: m.cx, cy: m.cy };
+      (Array.isArray(items) ? items : [items]).forEach(it => it && drawItem(g, it, m.R, Object.assign({ preview: true }, o)));
+      (outline || []).forEach(it => it && drawItem(g, it, m.R, Object.assign({ preview: true, outline: 'rgba(255,159,28,0.95)' }, o)));
+      const mq = this.marquee;
+      if (mq) {
+        const R = m.R, x0 = m.cx + Math.min(mq[0], mq[2]) * R, y0 = m.cy + Math.min(mq[1], mq[3]) * R;
+        g.save(); g.fillStyle = 'rgba(255,159,28,0.10)'; g.strokeStyle = 'rgba(255,159,28,0.95)'; g.lineWidth = Math.max(1.5, this.S * 0.002);
+        g.setLineDash && g.setLineDash([this.S * 0.008, this.S * 0.005]);
+        g.fillRect(x0, y0, Math.abs(mq[2] - mq[0]) * R, Math.abs(mq[3] - mq[1]) * R); g.strokeRect(x0, y0, Math.abs(mq[2] - mq[0]) * R, Math.abs(mq[3] - mq[1]) * R);
         g.restore();
       }
     }
     renderGuides(opts) {
       if (opts) Object.assign(this.guides, opts);
-      const G = this.guides, g = this.ctx(this.guide), S = this.S, W = this.W || S, R = S / 2, cx = W / 2;
+      const G = this.guides, g = this.ctx(this.guide), S = this.S, W = this.W || S, m = this.map, R = m.R;
       if (!g || !S) return;
       g.clearRect(0, 0, W, S);
       const dark = this.doc ? lum(this.doc.bg) < 0.55 : true;
       const ink = dark ? 'rgba(255,255,255,' : 'rgba(30,20,50,';
-      if (G.dots > 1) {
-        const step = S / G.dots, cols = Math.floor(W / step), x0 = (W - cols * step) / 2;
-        g.fillStyle = ink + '0.38)';
-        for (let i = 0; i < cols; i++) for (let j = 0; j < G.dots; j++) { g.beginPath(); g.arc(x0 + step * (i + 0.5), step * (j + 0.5), Math.max(1.5, S / 420), 0, 7); g.fill(); }
-      }
+      const c = G.centre || [0, 0], ccx = m.cx + c[0] * R, ccy = m.cy + c[1] * R;
       g.lineWidth = Math.max(1, S / 900);
-      if (G.sym === 'tile' || G.sym === 'border') {
-        const k = Math.max(1, G.k || 4), cell = S / k;
-        g.strokeStyle = ink + '0.22)';
-        if (G.sym === 'tile') {
-          for (let x = cx % cell; x < W; x += cell) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, S); g.stroke(); }
-          for (let i = 1; i < k; i++) { g.beginPath(); g.moveTo(0, i * cell); g.lineTo(W, i * cell); g.stroke(); }
-        } else { const l = cx - R; g.strokeRect(l + cell * 0.02, cell * 0.02, S - cell * 0.04, S - cell * 0.04); g.strokeRect(l + cell, cell, S - 2 * cell, S - 2 * cell); }
-        return;
+      // draw.io-style grid on the infinite board: fine lines plus a stronger line every 5
+      if (this.board && G.grid !== false) {
+        let step = 0.1;
+        while (step * R < 14) step *= 5;
+        while (step * R > 70) step /= 5;
+        const [wx0, wy0] = this.worldAt(0, 0), [wx1, wy1] = this.worldAt(W, S);
+        for (let x = Math.floor(wx0 / step) * step; x <= wx1; x += step) { const px = m.cx + x * R, major = Math.abs(Math.round(x / step)) % 5 === 0; g.strokeStyle = ink + (major ? '0.13)' : '0.055)'); g.beginPath(); g.moveTo(px, 0); g.lineTo(px, S); g.stroke(); }
+        for (let y = Math.floor(wy0 / step) * step; y <= wy1; y += step) { const py = m.cy + y * R, major = Math.abs(Math.round(y / step)) % 5 === 0; g.strokeStyle = ink + (major ? '0.13)' : '0.055)'); g.beginPath(); g.moveTo(0, py); g.lineTo(W, py); g.stroke(); }
       }
-      if (G.rings > 0) {
-        g.strokeStyle = ink + '0.16)';
-        for (let i = 1; i <= G.rings; i++) { g.beginPath(); g.arc(cx, R, (R * i) / G.rings, 0, 7); g.stroke(); }
-      }
-      if (G.radial) {
-        const n = Math.max(1, G.n), lines = n * (G.mirror ? 2 : 1), len = Math.hypot(W, S) / 2;
-        for (let k = 0; k < lines; k++) {
-          const a = ((G.rot || 0) * Math.PI) / 180 + (k * Math.PI * 2) / lines - Math.PI / 2;
-          g.strokeStyle = ink + (k % (G.mirror ? 2 : 1) === 0 ? '0.3)' : '0.14)');
-          g.beginPath(); g.moveTo(cx, R); g.lineTo(cx + len * Math.cos(a), R + len * Math.sin(a)); g.stroke();
+      if (G.dots > 1) {
+        const stepU = 2 / G.dots, stepPx = stepU * R;
+        g.fillStyle = ink + '0.38)';
+        if (this.board) {
+          if (stepPx > 6) { const [wx0, wy0] = this.worldAt(0, 0), [wx1, wy1] = this.worldAt(W, S); for (let x = Math.floor(wx0 / stepU) * stepU; x <= wx1; x += stepU) for (let y = Math.floor(wy0 / stepU) * stepU; y <= wy1; y += stepU) { g.beginPath(); g.arc(m.cx + x * R, m.cy + y * R, Math.max(1.5, S / 420), 0, 7); g.fill(); } }
+        } else {
+          const cols = Math.floor(W / stepPx), x0 = (W - cols * stepPx) / 2;
+          for (let i = 0; i < cols; i++) for (let j = 0; j < G.dots; j++) { g.beginPath(); g.arc(x0 + stepPx * (i + 0.5), stepPx * (j + 0.5), Math.max(1.5, S / 420), 0, 7); g.fill(); }
         }
       }
+      if (G.sym === 'tile' || G.sym === 'border') {
+        const k = Math.max(1, G.k || 4), cell = (2 / k) * R;
+        g.strokeStyle = ink + '0.22)';
+        if (G.sym === 'tile') {
+          for (let x = ccx % cell; x < W; x += cell) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, S); g.stroke(); }
+          for (let y = ccy % cell; y < S; y += cell) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+        } else { g.strokeRect(ccx - R + cell * 0.02, ccy - R + cell * 0.02, 2 * R - cell * 0.04, 2 * R - cell * 0.04); g.strokeRect(ccx - R + cell, ccy - R + cell, 2 * R - 2 * cell, 2 * R - 2 * cell); }
+      } else {
+        if (G.rings > 0) {
+          g.strokeStyle = ink + '0.16)';
+          for (let i = 1; i <= G.rings; i++) { g.beginPath(); g.arc(ccx, ccy, (R * i) / G.rings, 0, 7); g.stroke(); }
+        }
+        if (G.radial) {
+          const n = Math.max(1, G.n), lines = n * (G.mirror ? 2 : 1), len = this.board ? R : Math.hypot(W, S) / 2;
+          for (let k = 0; k < lines; k++) {
+            const a = ((G.rot || 0) * Math.PI) / 180 + (k * Math.PI * 2) / lines - Math.PI / 2;
+            g.strokeStyle = ink + (k % (G.mirror ? 2 : 1) === 0 ? '0.3)' : '0.14)');
+            g.beginPath(); g.moveTo(ccx, ccy); g.lineTo(ccx + len * Math.cos(a), ccy + len * Math.sin(a)); g.stroke();
+          }
+        }
+      }
+      // symmetry centre marker (shown when it has been moved, and always on the board)
+      if (this.board || c[0] || c[1]) {
+        const s = Math.max(8, S * 0.012);
+        g.save(); g.strokeStyle = 'rgba(255,159,28,0.95)'; g.lineWidth = Math.max(1.5, S / 600);
+        g.beginPath(); g.arc(ccx, ccy, s, 0, 7); g.moveTo(ccx - s * 1.8, ccy); g.lineTo(ccx + s * 1.8, ccy); g.moveTo(ccx, ccy - s * 1.8); g.lineTo(ccx, ccy + s * 1.8); g.stroke();
+        g.restore();
+      }
     }
-    // Pointer → drawing coordinates: y runs -1..1 top to bottom, x is scaled the same way from the centre
-    toNorm(e) { const r = this.main.getBoundingClientRect(), h = r.height || r.width; return [((e.clientX - r.left - r.width / 2) / h) * 2, ((e.clientY - r.top) / h) * 2 - 1]; }
+    // Pointer → world coordinates (units: half the canvas height on a fixed canvas; camera-scaled on a board)
+    toNorm(e) {
+      const r = this.main.getBoundingClientRect(), h = r.height || r.width;
+      if (!this.board) return [((e.clientX - r.left - r.width / 2) / h) * 2, ((e.clientY - r.top) / h) * 2 - 1];
+      const k = this.W / (r.width || this.W);
+      return this.worldAt((e.clientX - r.left) * k, (e.clientY - r.top) * k);
+    }
     get aspect() { return aspectOf(this.doc); }
   }
 
@@ -604,9 +678,9 @@ const RM = (() => {
     R = R || 300;
     if (!HIT) { const c = document.createElement('canvas'); c.width = c.height = R * 2; HIT = c.getContext('2d'); }
     if (!HIT || !HIT.isPointInPath) return null;
-    const px = [(p[0] + 1) * R, (p[1] + 1) * R];
     for (let i = items.length - 1; i >= 0; i--) {
       const it = items[i];
+      const px = [(p[0] - (it.ox || 0) + 1) * R, (p[1] - (it.oy || 0) + 1) * R];
       if (it.t === 'fill' || it.e) continue;
       const geo = geom(it, R);
       if (!geo.p2d) continue;
@@ -636,13 +710,14 @@ const RM = (() => {
       if (L.visible === false) return;
       const lc = document.createElement('canvas'); lc.width = W; lc.height = H;
       const lg = lc.getContext('2d');
-      L.items.forEach(it => drawItem(lg, it, H / 2));
+      const em = exportMap(doc, W, H);
+      L.items.forEach(it => drawItem(lg, it, em.R, { cx: em.cx, cy: em.cy }));
       g.globalAlpha = L.opacity != null ? L.opacity : 1; g.globalCompositeOperation = L.blend || 'source-over'; g.drawImage(lc, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
     });
     return c;
   }
   function exportSVG(doc, opt) {
-    const S = 1000, R = 500, W = Math.round(S * aspectOf(doc)), CX = W / 2, withBg = !opt || opt.bg !== false;
+    const S = 1000, W = Math.round(S * aspectOf(doc)), EM = exportMap(doc, W, S), R = EM.R, CX = EM.cx, CY = EM.cy, withBg = !opt || opt.bg !== false;
     let defs = '', body = '', id = 0;
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     for (const L of doc.layers) {
@@ -654,18 +729,18 @@ const RM = (() => {
       for (const it of L.items) {
         if (it.t === 'fill') {
           if (lg) {
-            const fc = fillCanvas(lc, it, R);
+            const fc = fillCanvas(lc, it, R, CX, CY);
             if (fc && fc.toDataURL) {
               const url = fc.toDataURL('image/png');
               const img = `<image href="${url}" xlink:href="${url}" x="0" y="0" width="${W}" height="${S}"${it.o != null && it.o < 1 ? ` opacity="${it.o}"` : ''}/>`;
               if (it.e) { const mid = 'm' + id++; defs += `<mask id="${mid}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${S}"><rect width="${W}" height="${S}" fill="#fff"/>${img.replace('<image', '<image style="filter:brightness(0)"')}</mask>`; inner = `<g mask="url(#${mid})">${inner}</g>`; }
               else inner += img;
             }
-            drawItem(lg, it, R);
+            drawItem(lg, it, R, { cx: CX, cy: CY });
           }
           continue;
         }
-        if (lg) drawItem(lg, it, R);
+        if (lg) drawItem(lg, it, R, { cx: CX, cy: CY });
         const geo = geom(it, R);
         const kind = it.t === 'stroke' ? KIND[it.brush || 'brush'] || KIND.brush : KIND.brush;
         const lw = geo.lw * (kind.w || 1), fx = it.fx || {}, op = (it.o != null ? it.o : 1) * (kind.a || 1);
@@ -715,7 +790,7 @@ const RM = (() => {
           const tr = `rotate(${f((x.a * 180) / Math.PI)}) scale(${x.m} 1)${x.tx || x.ty ? ` translate(${f(x.tx * R)} ${f(x.ty * R)})` : ''}`;
           return `<g transform="${tr}"><use href="#${pid}" xlink:href="#${pid}" fill="${col}" stroke="${col}" stroke-width="${f(lw)}" stroke-linecap="${cap}" stroke-linejoin="${join}"${filt}/>${glit ? `<use href="#${glit}" xlink:href="#${glit}"/>` : ''}</g>`;
         }).join('');
-        const grp = `<g transform="translate(${CX} ${R})"${op < 1 ? ` opacity="${f(op)}"` : ''}>${uses}</g>`;
+        const grp = `<g transform="translate(${f(CX + (it.ox || 0) * R)} ${f(CY + (it.oy || 0) * R)})"${op < 1 ? ` opacity="${f(op)}"` : ''}>${uses}</g>`;
         if (it.e) {
           const mid = 'm' + id++;
           defs += `<mask id="${mid}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${S}"><rect width="${W}" height="${S}" fill="#fff"/>${grp}</mask>`;
@@ -730,7 +805,7 @@ const RM = (() => {
   /* ---------- where every copy of an item lands (normalised coords), for marquee selection ---------- */
   function copyCentres(it) {
     const n = it.pts.length, c = [it.pts.reduce((a, p) => a + p[0], 0) / n, it.pts.reduce((a, p) => a + p[1], 0) / n];
-    return xforms(it).map(x => { const p = xfPoint(c, x, 1, 0); return [p[0], p[1] - 1]; });
+    return xforms(it).map(x => { const p = xfPoint(c, x, 1, 0, 0); return [p[0] + (it.ox || 0), p[1] + (it.oy || 0)]; });
   }
   /* ---------- stencil: black outlines on white, for cutting or tracing ---------- */
   function stencil(doc) {
@@ -813,6 +888,6 @@ const RM = (() => {
     wake, tone, sfx, sound,
     rng, pickR, newSeed, hexToRgb, rgbToHex, hsvToHex, hexToHsv, shade, lum, isHex,
     Renderer, drawItem, geom, xforms, xfDelta, hitTest, petalPath, circlePath, polyPath, starPoly, stampPath, STAMPS, BRUSHES, SYMS, PATTERNS,
-    newDoc, newLayer, validDoc, clone, exportCanvas, exportSVG, paintBackground, ASPECTS, aspectOf, dims, copyCentres, stencil, snap, motif, MOTIFS, surprise, logoSVG
+    newDoc, newLayer, validDoc, clone, exportCanvas, exportSVG, paintBackground, ASPECTS, aspectOf, dims, copyCentres, stencil, boardBounds, exportMap, snap, motif, MOTIFS, surprise, logoSVG
   };
 })();

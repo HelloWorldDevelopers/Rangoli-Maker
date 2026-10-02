@@ -160,6 +160,7 @@ summary .rm-hi { margin-right: auto; }
 .s-glist .gi svg { width: 18px; height: 18px; }
 .s-glist kbd { font: 600 .74rem/1 ui-monospace, Consolas, monospace; padding: 3px 5px; border-radius: 5px; background: #221E2C; border: 1px solid #2F2A3C; }
 .s-guide .tip { margin: 14px 0 0; color: #9C95AF; font-size: .88rem; }
+.rm-stack.board { aspect-ratio: auto; max-width: none; }
 
 /* =================== KIDS — sunny courtyard, marigold toran, chunky controls =================== */
 #view-kids {
@@ -1063,8 +1064,8 @@ const RM = (() => {
   }
   // R is half the canvas height (the drawing scale); the centre is the middle of the canvas, so wide canvases work too
   const centreX = (g, R) => { const w = g && g.canvas && g.canvas.width; return typeof w === 'number' && w > 0 ? w / 2 : R; };
-  function applyX(g, R, x) { g.translate(centreX(g, R), R); g.rotate(x.a); g.scale(x.m, 1); if (x.tx || x.ty) g.translate(x.tx * R, x.ty * R); }
-  function xfPoint(p, x, R, cx) { const X = (p[0] + x.tx * R) * x.m, Y = p[1] + x.ty * R, c = Math.cos(x.a), s = Math.sin(x.a); return [(cx != null ? cx : R) + X * c - Y * s, R + X * s + Y * c]; }
+  function applyX(g, R, x, cx, cy) { g.translate(cx != null ? cx : centreX(g, R), cy != null ? cy : R); g.rotate(x.a); g.scale(x.m, 1); if (x.tx || x.ty) g.translate(x.tx * R, x.ty * R); }
+  function xfPoint(p, x, R, cx, cy) { const X = (p[0] + x.tx * R) * x.m, Y = p[1] + x.ty * R, c = Math.cos(x.a), s = Math.sin(x.a); return [(cx != null ? cx : R) + X * c - Y * s, (cy != null ? cy : R) + X * s + Y * c]; }
   function xfInverse(px, x, R) { const X = px[0] - R, Y = px[1] - R, c = Math.cos(-x.a), s = Math.sin(-x.a); const rx = X * c - Y * s, ry = X * s + Y * c; return [rx * x.m - x.tx * R, ry - x.ty * R]; }
   function xfDelta(d, x) { const c = Math.cos(-x.a), s = Math.sin(-x.a); return [(d[0] * c - d[1] * s) * x.m, d[0] * s + d[1] * c]; }
 
@@ -1145,7 +1146,9 @@ const RM = (() => {
   }
   function drawItem(g, it, R, opt) {
     opt = opt || {};
-    if (it.t === 'fill') { if (!opt.preview) drawFill(g, it, R); return; }
+    if (it.t === 'fill') { if (!opt.preview) drawFill(g, it, R, opt); return; }
+    // where this item's symmetry centre lands on the canvas: the view's origin plus the item's own offset
+    const ccx = (opt.cx != null ? opt.cx : centreX(g, R)) + (it.ox || 0) * R, ccy = (opt.cy != null ? opt.cy : R) + (it.oy || 0) * R;
     const geo = geom(it, R);
     if (!geo.p2d) return;
     const kind = it.t === 'stroke' ? KIND[it.brush || 'brush'] || KIND.brush : KIND.brush;
@@ -1159,7 +1162,7 @@ const RM = (() => {
     if (it.e && !preview) g.globalCompositeOperation = 'destination-out';
     for (const x of xforms(it)) {
       g.save();
-      applyX(g, R, x);
+      applyX(g, R, x, ccx, ccy);
       const style = opt.outline ? opt.outline : it.e && preview ? 'rgba(255,255,255,0.55)' : paintStyle(g, it, x, R, geo.box);
       g.fillStyle = style; g.strokeStyle = style;
       if (opt.outline) { g.globalAlpha = 1; g.setLineDash && g.setLineDash([R * 0.012, R * 0.01]); g.lineWidth = Math.max(1.5, R * 0.004); const o = geo.box; g.strokeRect(o[0], o[1], o[2] - o[0], o[3] - o[1]); g.restore(); continue; }
@@ -1181,13 +1184,13 @@ const RM = (() => {
   }
 
   /* ---------- bucket fill (raster, replayed in order so undo and export stay exact) ---------- */
-  function fillCanvas(src, it, R) {
+  function fillCanvas(src, it, R, ocx, ocy) {
     const S = src.width, H = src.height || S, sg = src.getContext('2d');
     if (!sg || !sg.getImageData || !S) return null;
     let img;
     try { img = sg.getImageData(0, 0, S, H); } catch (e) { return null; }
     const d = img.data, N = S * H, mask = new Uint8Array(N), tol = it.tol != null ? it.tol : 40;
-    const seeds = xforms(it).map(x => xfPoint([it.pts[0][0] * R, it.pts[0][1] * R], x, R, S / 2)).map(p => [Math.round(p[0]), Math.round(p[1])]).filter(p => p[0] >= 0 && p[1] >= 0 && p[0] < S && p[1] < H);
+    const seeds = xforms(it).map(x => xfPoint([it.pts[0][0] * R, it.pts[0][1] * R], x, R, (ocx != null ? ocx : S / 2) + (it.ox || 0) * R, (ocy != null ? ocy : R) + (it.oy || 0) * R)).map(p => [Math.round(p[0]), Math.round(p[1])]).filter(p => p[0] >= 0 && p[1] >= 0 && p[0] < S && p[1] < H);
     const stack = [];
     for (const [sx, sy] of seeds) {
       const si = sy * S + sx;
@@ -1229,10 +1232,10 @@ const RM = (() => {
     if (it.fx && it.fx.glitter) { const r = rng((it.sd || 7) + 11); for (let i = 0; i < 260; i++) { og.fillStyle = r() < 0.6 ? 'rgba(255,255,255,0.9)' : 'rgba(255,224,130,0.9)'; og.beginPath(); og.arc(r() * S, r() * H, Math.max(0.6, R * 0.004 + r() * R * 0.004), 0, 7); og.fill(); } }
     return out;
   }
-  function drawFill(g, it, R) {
+  function drawFill(g, it, R, opt) {
     const src = g.canvas;
     if (!src) return;
-    const fc = fillCanvas(src, it, R);
+    const fc = fillCanvas(src, it, R, opt && opt.cx, opt && opt.cy);
     if (!fc) return;
     g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = it.e ? 'destination-out' : 'source-over'; g.globalAlpha = it.o != null ? it.o : 1; g.drawImage(fc, 0, 0); g.restore();
   }
@@ -1263,7 +1266,25 @@ const RM = (() => {
   }
   // Canvas shape: width ÷ height. Square is 1.
   const ASPECTS = [1, 4 / 3, 3 / 2, 16 / 9, 2];
-  const aspectOf = doc => { const a = Number(doc && doc.ar); return a > 0.4 && a < 3 ? a : 1; };
+  const aspectOf = doc => { if (doc && doc.board) { const b = boardBounds(doc); return Math.max(0.2, Math.min(5, (b[2] - b[0]) / (b[3] - b[1]))); } const a = Number(doc && doc.ar); return a > 0.4 && a < 3 ? a : 1; };
+  // How far each item reaches from its own centre, so a board export can crop to what is drawn
+  function itemReach(it) {
+    const pts = it.pts || [[0, 0]], far = Math.max(0, ...pts.map(p => Math.hypot(p[0], p[1])));
+    const a = pts[0] || [0, 0], b = pts[1] || a, span = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const extra = it.t === 'stamp' ? (it.sz || 0.06) * 1.3 : it.t === 'text' ? (it.ts || 0.08) * Math.max(1, String(it.txt || '').length) * 0.32 : ['circle', 'poly'].includes(it.t) ? span : ((it.w || 4) / 500) * 1.5;
+    let reach = far + extra;
+    if (it.sym === 'tile' || it.sym === 'border') { const k = Math.max(1, it.k || 3); reach += ((k - 1) * 2) / k + (it.sym === 'border' ? 1 : 0); }
+    return reach;
+  }
+  function boardBounds(doc) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    (doc.layers || []).forEach(L => { if (L.visible === false) return; L.items.forEach(it => { if (it.e) return; const r = itemReach(it), ox = it.ox || 0, oy = it.oy || 0; x0 = Math.min(x0, ox - r); y0 = Math.min(y0, oy - r); x1 = Math.max(x1, ox + r); y1 = Math.max(y1, oy + r); }); });
+    if (!isFinite(x0)) return [-1, -1, 1, 1];
+    const pad = Math.max(x1 - x0, y1 - y0) * 0.05;
+    return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
+  }
+  // World units → export pixels for a W×H output
+  function exportMap(doc, W, H) { if (!doc.board) return { R: H / 2, cx: W / 2, cy: H / 2 }; const b = boardBounds(doc), R = H / (b[3] - b[1]); return { R, cx: -b[0] * R, cy: -b[1] * R }; }
   const dims = (doc, S) => { const a = aspectOf(doc); return a >= 1 ? [S, Math.round(S / a)] : [Math.round(S * a), S]; };
 
   /* ---------- renderer: artwork, guides and live canvases ---------- */
@@ -1272,18 +1293,34 @@ const RM = (() => {
       this.stack = stack;
       this.main = stack.querySelector('.cv-main'); this.guide = stack.querySelector('.cv-guide'); this.live = stack.querySelector('.cv-live');
       this.cache = new Map(); this.S = 0; this.W = 0; this.doc = null; this.hidden = new Set();
-      this.guides = { radial: false, rings: 0, dots: 0, n: 8, mirror: true, rot: 0, sym: 'radial', k: 4 };
+      this.cam = { x: 0, y: 0, z: 1 };
+      this.guides = { radial: false, rings: 0, dots: 0, n: 8, mirror: true, rot: 0, sym: 'radial', k: 4, centre: [0, 0], grid: true };
     }
     ctx(cv) { return cv.getContext('2d'); }
-    // S is the canvas height in pixels (the drawing scale); W is the width, wider for non-square shapes
+    get board() { return !!(this.doc && this.doc.board); }
+    // Drawing scale and where the world origin sits on the canvas.
+    // Fixed canvas: origin at the middle, one unit = half the height. Infinite board: from the camera.
+    get map() {
+      const S = this.S, W = this.W || S;
+      if (!this.board) return { R: S / 2, cx: W / 2, cy: S / 2 };
+      const R = (S / 2) * this.cam.z;
+      return { R, cx: W / 2 - this.cam.x * R, cy: S / 2 - this.cam.y * R };
+    }
+    // S is the canvas height in pixels; W is the width (wider for non-square shapes, the whole workspace on a board)
     resize(force) {
       const ar = aspectOf(this.doc);
-      this.stack.style.setProperty('--ar', String(ar));
+      if (!this.board) this.stack.style.setProperty('--ar', String(ar));
       const r = this.main.getBoundingClientRect();
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      let S = Math.round(((r.height || (r.width || 600) / ar) || 600) * dpr), W = Math.round(S * ar);
-      if (W > 2400) { W = 2400; S = Math.round(W / ar); }
-      if (S > 2048) { S = 2048; W = Math.round(S * ar); }
+      let S, W;
+      if (this.board) {
+        W = Math.round((r.width || 600) * dpr); S = Math.round((r.height || r.width || 600) * dpr);
+        const k = Math.min(1, 2400 / Math.max(W, S)); W = Math.round(W * k); S = Math.round(S * k);
+      } else {
+        S = Math.round(((r.height || (r.width || 600) / ar) || 600) * dpr); W = Math.round(S * ar);
+        if (W > 2400) { W = 2400; S = Math.round(W / ar); }
+        if (S > 2048) { S = 2048; W = Math.round(S * ar); }
+      }
       S = Math.max(64, S); W = Math.max(64, W);
       if (!force && S === this.S && W === this.W) return;
       this.S = S; this.W = W;
@@ -1292,7 +1329,16 @@ const RM = (() => {
       if (this.doc) this.renderAll();
       this.renderGuides();
     }
-    setDoc(doc) { this.doc = doc; this.cache.clear(); this.stack.style.setProperty('--ar', String(aspectOf(doc))); if (this.S) this.resize(true); }
+    setDoc(doc) { this.doc = doc; this.cache.clear(); if (doc && doc.cam) this.cam = Object.assign({ x: 0, y: 0, z: 1 }, doc.cam); if (!this.board) this.stack.style.setProperty('--ar', String(aspectOf(doc))); if (this.S) this.resize(true); }
+    // Board camera moves redraw everything, at most once per frame
+    setCamera(cam) {
+      Object.assign(this.cam, cam);
+      this.cam.z = Math.max(0.05, Math.min(40, this.cam.z));
+      if (this.doc) this.doc.cam = { x: this.cam.x, y: this.cam.y, z: this.cam.z };
+      if (this.camFrame) return;
+      this.camFrame = requestAnimationFrame(() => { this.camFrame = 0; this.renderAll(); this.renderGuides(); });
+    }
+    worldAt(px, py) { const m = this.map; return [(px - m.cx) / m.R, (py - m.cy) / m.R]; }
     layerCanvas(L) {
       let c = this.cache.get(L.id);
       if (!c || c.width !== this.W || c.height !== this.S) { c = document.createElement('canvas'); c.width = this.W; c.height = this.S; this.cache.set(L.id, c); this.paintLayer(L, c); }
@@ -1303,7 +1349,8 @@ const RM = (() => {
       const g = this.ctx(c);
       if (!g) return;
       g.clearRect(0, 0, this.W, this.S);
-      L.items.forEach(it => { if (!this.hidden.has(it)) drawItem(g, it, this.S / 2); });
+      const m = this.map;
+      L.items.forEach(it => { if (!this.hidden.has(it)) drawItem(g, it, m.R, { cx: m.cx, cy: m.cy }); });
     }
     renderAll() { if (!this.doc) return; this.doc.layers.forEach(L => { const c = this.cache.get(L.id); if (c && c.width === this.W && c.height === this.S) this.paintLayer(L, c); else this.layerCanvas(L); }); this.composite(); }
     composite() {
@@ -1314,7 +1361,7 @@ const RM = (() => {
       this.doc.layers.forEach(L => { if (L.visible === false) return; g.globalAlpha = L.opacity != null ? L.opacity : 1; g.globalCompositeOperation = L.blend || 'source-over'; g.drawImage(this.layerCanvas(L), 0, 0); });
       g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
     }
-    commit(L, it) { const g = this.ctx(this.layerCanvas(L)); if (g) drawItem(g, it, this.S / 2); this.composite(); this.clearLive(); }
+    commit(L, it) { const g = this.ctx(this.layerCanvas(L)), m = this.map; if (g) drawItem(g, it, m.R, { cx: m.cx, cy: m.cy }); this.composite(); this.clearLive(); }
     clearLive() { this.cancelLive(); const g = this.ctx(this.live); if (g) g.clearRect(0, 0, this.W, this.S); }
     cancelLive() { if (this.liveFrame) { cancelAnimationFrame(this.liveFrame); this.liveFrame = 0; } this.livePending = null; }
     // Pointer events can arrive far faster than the screen refreshes; draw at most once per frame
@@ -1327,54 +1374,82 @@ const RM = (() => {
       const g = this.ctx(this.live);
       if (!g) return;
       g.clearRect(0, 0, this.W, this.S);
-      (Array.isArray(items) ? items : [items]).forEach(it => it && drawItem(g, it, this.S / 2, { preview: true }));
-      (outline || []).forEach(it => it && drawItem(g, it, this.S / 2, { preview: true, outline: 'rgba(255,159,28,0.95)' }));
-      const m = this.marquee;
-      if (m) {
-        const R = this.S / 2, cx = this.W / 2, x0 = cx + Math.min(m[0], m[2]) * R, y0 = R + Math.min(m[1], m[3]) * R;
-        g.save(); g.fillStyle = 'rgba(255,159,28,0.10)'; g.strokeStyle = 'rgba(255,159,28,0.95)'; g.lineWidth = Math.max(1.5, R * 0.004);
-        g.setLineDash && g.setLineDash([R * 0.015, R * 0.01]);
-        g.fillRect(x0, y0, Math.abs(m[2] - m[0]) * R, Math.abs(m[3] - m[1]) * R); g.strokeRect(x0, y0, Math.abs(m[2] - m[0]) * R, Math.abs(m[3] - m[1]) * R);
+      const m = this.map, o = { cx: m.cx, cy: m.cy };
+      (Array.isArray(items) ? items : [items]).forEach(it => it && drawItem(g, it, m.R, Object.assign({ preview: true }, o)));
+      (outline || []).forEach(it => it && drawItem(g, it, m.R, Object.assign({ preview: true, outline: 'rgba(255,159,28,0.95)' }, o)));
+      const mq = this.marquee;
+      if (mq) {
+        const R = m.R, x0 = m.cx + Math.min(mq[0], mq[2]) * R, y0 = m.cy + Math.min(mq[1], mq[3]) * R;
+        g.save(); g.fillStyle = 'rgba(255,159,28,0.10)'; g.strokeStyle = 'rgba(255,159,28,0.95)'; g.lineWidth = Math.max(1.5, this.S * 0.002);
+        g.setLineDash && g.setLineDash([this.S * 0.008, this.S * 0.005]);
+        g.fillRect(x0, y0, Math.abs(mq[2] - mq[0]) * R, Math.abs(mq[3] - mq[1]) * R); g.strokeRect(x0, y0, Math.abs(mq[2] - mq[0]) * R, Math.abs(mq[3] - mq[1]) * R);
         g.restore();
       }
     }
     renderGuides(opts) {
       if (opts) Object.assign(this.guides, opts);
-      const G = this.guides, g = this.ctx(this.guide), S = this.S, W = this.W || S, R = S / 2, cx = W / 2;
+      const G = this.guides, g = this.ctx(this.guide), S = this.S, W = this.W || S, m = this.map, R = m.R;
       if (!g || !S) return;
       g.clearRect(0, 0, W, S);
       const dark = this.doc ? lum(this.doc.bg) < 0.55 : true;
       const ink = dark ? 'rgba(255,255,255,' : 'rgba(30,20,50,';
-      if (G.dots > 1) {
-        const step = S / G.dots, cols = Math.floor(W / step), x0 = (W - cols * step) / 2;
-        g.fillStyle = ink + '0.38)';
-        for (let i = 0; i < cols; i++) for (let j = 0; j < G.dots; j++) { g.beginPath(); g.arc(x0 + step * (i + 0.5), step * (j + 0.5), Math.max(1.5, S / 420), 0, 7); g.fill(); }
-      }
+      const c = G.centre || [0, 0], ccx = m.cx + c[0] * R, ccy = m.cy + c[1] * R;
       g.lineWidth = Math.max(1, S / 900);
-      if (G.sym === 'tile' || G.sym === 'border') {
-        const k = Math.max(1, G.k || 4), cell = S / k;
-        g.strokeStyle = ink + '0.22)';
-        if (G.sym === 'tile') {
-          for (let x = cx % cell; x < W; x += cell) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, S); g.stroke(); }
-          for (let i = 1; i < k; i++) { g.beginPath(); g.moveTo(0, i * cell); g.lineTo(W, i * cell); g.stroke(); }
-        } else { const l = cx - R; g.strokeRect(l + cell * 0.02, cell * 0.02, S - cell * 0.04, S - cell * 0.04); g.strokeRect(l + cell, cell, S - 2 * cell, S - 2 * cell); }
-        return;
+      // draw.io-style grid on the infinite board: fine lines plus a stronger line every 5
+      if (this.board && G.grid !== false) {
+        let step = 0.1;
+        while (step * R < 14) step *= 5;
+        while (step * R > 70) step /= 5;
+        const [wx0, wy0] = this.worldAt(0, 0), [wx1, wy1] = this.worldAt(W, S);
+        for (let x = Math.floor(wx0 / step) * step; x <= wx1; x += step) { const px = m.cx + x * R, major = Math.abs(Math.round(x / step)) % 5 === 0; g.strokeStyle = ink + (major ? '0.13)' : '0.055)'); g.beginPath(); g.moveTo(px, 0); g.lineTo(px, S); g.stroke(); }
+        for (let y = Math.floor(wy0 / step) * step; y <= wy1; y += step) { const py = m.cy + y * R, major = Math.abs(Math.round(y / step)) % 5 === 0; g.strokeStyle = ink + (major ? '0.13)' : '0.055)'); g.beginPath(); g.moveTo(0, py); g.lineTo(W, py); g.stroke(); }
       }
-      if (G.rings > 0) {
-        g.strokeStyle = ink + '0.16)';
-        for (let i = 1; i <= G.rings; i++) { g.beginPath(); g.arc(cx, R, (R * i) / G.rings, 0, 7); g.stroke(); }
-      }
-      if (G.radial) {
-        const n = Math.max(1, G.n), lines = n * (G.mirror ? 2 : 1), len = Math.hypot(W, S) / 2;
-        for (let k = 0; k < lines; k++) {
-          const a = ((G.rot || 0) * Math.PI) / 180 + (k * Math.PI * 2) / lines - Math.PI / 2;
-          g.strokeStyle = ink + (k % (G.mirror ? 2 : 1) === 0 ? '0.3)' : '0.14)');
-          g.beginPath(); g.moveTo(cx, R); g.lineTo(cx + len * Math.cos(a), R + len * Math.sin(a)); g.stroke();
+      if (G.dots > 1) {
+        const stepU = 2 / G.dots, stepPx = stepU * R;
+        g.fillStyle = ink + '0.38)';
+        if (this.board) {
+          if (stepPx > 6) { const [wx0, wy0] = this.worldAt(0, 0), [wx1, wy1] = this.worldAt(W, S); for (let x = Math.floor(wx0 / stepU) * stepU; x <= wx1; x += stepU) for (let y = Math.floor(wy0 / stepU) * stepU; y <= wy1; y += stepU) { g.beginPath(); g.arc(m.cx + x * R, m.cy + y * R, Math.max(1.5, S / 420), 0, 7); g.fill(); } }
+        } else {
+          const cols = Math.floor(W / stepPx), x0 = (W - cols * stepPx) / 2;
+          for (let i = 0; i < cols; i++) for (let j = 0; j < G.dots; j++) { g.beginPath(); g.arc(x0 + stepPx * (i + 0.5), stepPx * (j + 0.5), Math.max(1.5, S / 420), 0, 7); g.fill(); }
         }
       }
+      if (G.sym === 'tile' || G.sym === 'border') {
+        const k = Math.max(1, G.k || 4), cell = (2 / k) * R;
+        g.strokeStyle = ink + '0.22)';
+        if (G.sym === 'tile') {
+          for (let x = ccx % cell; x < W; x += cell) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, S); g.stroke(); }
+          for (let y = ccy % cell; y < S; y += cell) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+        } else { g.strokeRect(ccx - R + cell * 0.02, ccy - R + cell * 0.02, 2 * R - cell * 0.04, 2 * R - cell * 0.04); g.strokeRect(ccx - R + cell, ccy - R + cell, 2 * R - 2 * cell, 2 * R - 2 * cell); }
+      } else {
+        if (G.rings > 0) {
+          g.strokeStyle = ink + '0.16)';
+          for (let i = 1; i <= G.rings; i++) { g.beginPath(); g.arc(ccx, ccy, (R * i) / G.rings, 0, 7); g.stroke(); }
+        }
+        if (G.radial) {
+          const n = Math.max(1, G.n), lines = n * (G.mirror ? 2 : 1), len = this.board ? R : Math.hypot(W, S) / 2;
+          for (let k = 0; k < lines; k++) {
+            const a = ((G.rot || 0) * Math.PI) / 180 + (k * Math.PI * 2) / lines - Math.PI / 2;
+            g.strokeStyle = ink + (k % (G.mirror ? 2 : 1) === 0 ? '0.3)' : '0.14)');
+            g.beginPath(); g.moveTo(ccx, ccy); g.lineTo(ccx + len * Math.cos(a), ccy + len * Math.sin(a)); g.stroke();
+          }
+        }
+      }
+      // symmetry centre marker (shown when it has been moved, and always on the board)
+      if (this.board || c[0] || c[1]) {
+        const s = Math.max(8, S * 0.012);
+        g.save(); g.strokeStyle = 'rgba(255,159,28,0.95)'; g.lineWidth = Math.max(1.5, S / 600);
+        g.beginPath(); g.arc(ccx, ccy, s, 0, 7); g.moveTo(ccx - s * 1.8, ccy); g.lineTo(ccx + s * 1.8, ccy); g.moveTo(ccx, ccy - s * 1.8); g.lineTo(ccx, ccy + s * 1.8); g.stroke();
+        g.restore();
+      }
     }
-    // Pointer → drawing coordinates: y runs -1..1 top to bottom, x is scaled the same way from the centre
-    toNorm(e) { const r = this.main.getBoundingClientRect(), h = r.height || r.width; return [((e.clientX - r.left - r.width / 2) / h) * 2, ((e.clientY - r.top) / h) * 2 - 1]; }
+    // Pointer → world coordinates (units: half the canvas height on a fixed canvas; camera-scaled on a board)
+    toNorm(e) {
+      const r = this.main.getBoundingClientRect(), h = r.height || r.width;
+      if (!this.board) return [((e.clientX - r.left - r.width / 2) / h) * 2, ((e.clientY - r.top) / h) * 2 - 1];
+      const k = this.W / (r.width || this.W);
+      return this.worldAt((e.clientX - r.left) * k, (e.clientY - r.top) * k);
+    }
     get aspect() { return aspectOf(this.doc); }
   }
 
@@ -1384,9 +1459,9 @@ const RM = (() => {
     R = R || 300;
     if (!HIT) { const c = document.createElement('canvas'); c.width = c.height = R * 2; HIT = c.getContext('2d'); }
     if (!HIT || !HIT.isPointInPath) return null;
-    const px = [(p[0] + 1) * R, (p[1] + 1) * R];
     for (let i = items.length - 1; i >= 0; i--) {
       const it = items[i];
+      const px = [(p[0] - (it.ox || 0) + 1) * R, (p[1] - (it.oy || 0) + 1) * R];
       if (it.t === 'fill' || it.e) continue;
       const geo = geom(it, R);
       if (!geo.p2d) continue;
@@ -1416,13 +1491,14 @@ const RM = (() => {
       if (L.visible === false) return;
       const lc = document.createElement('canvas'); lc.width = W; lc.height = H;
       const lg = lc.getContext('2d');
-      L.items.forEach(it => drawItem(lg, it, H / 2));
+      const em = exportMap(doc, W, H);
+      L.items.forEach(it => drawItem(lg, it, em.R, { cx: em.cx, cy: em.cy }));
       g.globalAlpha = L.opacity != null ? L.opacity : 1; g.globalCompositeOperation = L.blend || 'source-over'; g.drawImage(lc, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
     });
     return c;
   }
   function exportSVG(doc, opt) {
-    const S = 1000, R = 500, W = Math.round(S * aspectOf(doc)), CX = W / 2, withBg = !opt || opt.bg !== false;
+    const S = 1000, W = Math.round(S * aspectOf(doc)), EM = exportMap(doc, W, S), R = EM.R, CX = EM.cx, CY = EM.cy, withBg = !opt || opt.bg !== false;
     let defs = '', body = '', id = 0;
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     for (const L of doc.layers) {
@@ -1434,18 +1510,18 @@ const RM = (() => {
       for (const it of L.items) {
         if (it.t === 'fill') {
           if (lg) {
-            const fc = fillCanvas(lc, it, R);
+            const fc = fillCanvas(lc, it, R, CX, CY);
             if (fc && fc.toDataURL) {
               const url = fc.toDataURL('image/png');
               const img = `<image href="${url}" xlink:href="${url}" x="0" y="0" width="${W}" height="${S}"${it.o != null && it.o < 1 ? ` opacity="${it.o}"` : ''}/>`;
               if (it.e) { const mid = 'm' + id++; defs += `<mask id="${mid}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${S}"><rect width="${W}" height="${S}" fill="#fff"/>${img.replace('<image', '<image style="filter:brightness(0)"')}</mask>`; inner = `<g mask="url(#${mid})">${inner}</g>`; }
               else inner += img;
             }
-            drawItem(lg, it, R);
+            drawItem(lg, it, R, { cx: CX, cy: CY });
           }
           continue;
         }
-        if (lg) drawItem(lg, it, R);
+        if (lg) drawItem(lg, it, R, { cx: CX, cy: CY });
         const geo = geom(it, R);
         const kind = it.t === 'stroke' ? KIND[it.brush || 'brush'] || KIND.brush : KIND.brush;
         const lw = geo.lw * (kind.w || 1), fx = it.fx || {}, op = (it.o != null ? it.o : 1) * (kind.a || 1);
@@ -1495,7 +1571,7 @@ const RM = (() => {
           const tr = `rotate(${f((x.a * 180) / Math.PI)}) scale(${x.m} 1)${x.tx || x.ty ? ` translate(${f(x.tx * R)} ${f(x.ty * R)})` : ''}`;
           return `<g transform="${tr}"><use href="#${pid}" xlink:href="#${pid}" fill="${col}" stroke="${col}" stroke-width="${f(lw)}" stroke-linecap="${cap}" stroke-linejoin="${join}"${filt}/>${glit ? `<use href="#${glit}" xlink:href="#${glit}"/>` : ''}</g>`;
         }).join('');
-        const grp = `<g transform="translate(${CX} ${R})"${op < 1 ? ` opacity="${f(op)}"` : ''}>${uses}</g>`;
+        const grp = `<g transform="translate(${f(CX + (it.ox || 0) * R)} ${f(CY + (it.oy || 0) * R)})"${op < 1 ? ` opacity="${f(op)}"` : ''}>${uses}</g>`;
         if (it.e) {
           const mid = 'm' + id++;
           defs += `<mask id="${mid}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${S}"><rect width="${W}" height="${S}" fill="#fff"/>${grp}</mask>`;
@@ -1510,7 +1586,7 @@ const RM = (() => {
   /* ---------- where every copy of an item lands (normalised coords), for marquee selection ---------- */
   function copyCentres(it) {
     const n = it.pts.length, c = [it.pts.reduce((a, p) => a + p[0], 0) / n, it.pts.reduce((a, p) => a + p[1], 0) / n];
-    return xforms(it).map(x => { const p = xfPoint(c, x, 1, 0); return [p[0], p[1] - 1]; });
+    return xforms(it).map(x => { const p = xfPoint(c, x, 1, 0, 0); return [p[0] + (it.ox || 0), p[1] + (it.oy || 0)]; });
   }
   /* ---------- stencil: black outlines on white, for cutting or tracing ---------- */
   function stencil(doc) {
@@ -1593,7 +1669,7 @@ const RM = (() => {
     wake, tone, sfx, sound,
     rng, pickR, newSeed, hexToRgb, rgbToHex, hsvToHex, hexToHsv, shade, lum, isHex,
     Renderer, drawItem, geom, xforms, xfDelta, hitTest, petalPath, circlePath, polyPath, starPoly, stampPath, STAMPS, BRUSHES, SYMS, PATTERNS,
-    newDoc, newLayer, validDoc, clone, exportCanvas, exportSVG, paintBackground, ASPECTS, aspectOf, dims, copyCentres, stencil, snap, motif, MOTIFS, surprise, logoSVG
+    newDoc, newLayer, validDoc, clone, exportCanvas, exportSVG, paintBackground, ASPECTS, aspectOf, dims, copyCentres, stencil, boardBounds, exportMap, snap, motif, MOTIFS, surprise, logoSVG
   };
 })();
 
@@ -1616,6 +1692,7 @@ const RM = (() => {
     petal: I('<path d="M12 21C6 15 6 8 12 3c6 5 6 12 0 18z"/>'),
     poly: I('<path d="m12 3 8.5 6.2-3.2 10H6.7L3.5 9.2z"/>'),
     dot: I('<circle cx="12" cy="12" r="4" fill="currentColor"/>'),
+    target: I('<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>'),
     hand: I('<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M11 10.5V4a1.5 1.5 0 0 1 3 0v6.5"/><path d="M14 10.5V5.5a1.5 1.5 0 0 1 3 0V13"/><path d="M17 11a1.5 1.5 0 0 1 3 0v3a7 7 0 0 1-7 7h-1.5a6 6 0 0 1-5-2.7L4 15.5a1.5 1.5 0 0 1 2.5-1.7L8 16"/>'),
     eye: I('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
     eyeOff: I('<path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4"/><path d="M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.6 9.6 0 0 0 4.4-1"/>'),
@@ -1728,7 +1805,7 @@ const RM = (() => {
     blendMode: ['How a layer mixes with the layers below. Multiply darkens, Screen lightens, Overlay adds contrast.', 'परत नीचे वाली परतों से कैसे मिले। मल्टीप्लाई गहरा, स्क्रीन हल्का, ओवरले कंट्रास्ट बढ़ाता है।', 'स्तर खालच्या स्तरांमध्ये कसा मिसळेल. गुणाकार गडद करतो, स्क्रीन फिकट करतो, आच्छादन कॉन्ट्रास्ट वाढवतो.'],
     layerOpacity: ['How see-through the whole layer is.', 'पूरी परत कितनी पारदर्शी हो।', 'संपूर्ण स्तर किती पारदर्शक असावा.'],
     history: ['Every change you made, newest first. Click a step to go back to it; Redo brings changes back.', 'आपके सभी बदलाव, नए सबसे ऊपर। किसी कदम पर वापस जाने के लिए क्लिक करें; फिर करें से बदलाव लौटते हैं।', 'तुम्ही केलेले सगळे बदल, नवीन वर. त्या टप्प्यावर परत जाण्यासाठी क्लिक करा; पुन्हा करा ने बदल परत येतात.'],
-    canvasShape: ['The canvas proportions. Fit matches your screen; 1:1 is square; 16:9 and 2:1 are wide, good for doorway borders. Exports use this shape.', 'कैनवास का अनुपात। फ़िट = आपकी स्क्रीन जैसा; 1:1 = वर्ग; 16:9 और 2:1 चौड़े, द्वार किनारी के लिए अच्छे। एक्सपोर्ट इसी आकार में होता है।', 'कॅनव्हासचं प्रमाण. बसवा = तुमच्या स्क्रीनसारखं; 1:1 = चौरस; 16:9 आणि 2:1 रुंद, दाराच्या किनारीसाठी चांगले. निर्यात याच आकारात होते.'],
+    canvasShape: ['∞ Infinite gives an endless board like draw.io: wheel or Pan tool to move, Ctrl + wheel or pinch to zoom, Fit (0) frames your drawing, and exports crop to what you drew. The other options are fixed canvas proportions.', '∞ अनंत = draw.io जैसा अंतहीन बोर्ड: व्हील/पैन से खिसकाएँ, Ctrl + व्हील या पिंच से ज़ूम, फ़िट (0) चित्र दिखाता है, एक्सपोर्ट चित्र तक कटता है। बाकी विकल्प तय अनुपात हैं।', '∞ अमर्याद = draw.io सारखा अंतहीन बोर्ड: व्हील/पॅनने सरकवा, Ctrl + व्हील किंवा पिंचने झूम, बसवा (0) चित्र दाखवते, निर्यात चित्रापुरती कापली जाते. बाकी पर्याय ठराविक प्रमाण आहेत.'],
     background: ['The floor colour behind your rangoli.', 'रंगोली के पीछे ज़मीन का रंग।', 'रांगोळीमागच्या जमिनीचा रंग.'],
     floorTex: ['Adds a subtle grain to the background, like a real floor.', 'पृष्ठभूमि में हल्की बनावट, असली ज़मीन जैसी।', 'पार्श्वभूमीला हलका पोत, खऱ्या जमिनीसारखा.'],
     // ---- Kids ----
@@ -1758,6 +1835,7 @@ const RM = (() => {
     dot: ['Click to place dots.', 'बिंदु रखने के लिए क्लिक करें।', 'ठिपके ठेवण्यासाठी क्लिक करा.'],
     stamp: ['Click to place a motif such as a flower, diya or mango.', 'फूल, दीया या कैरी जैसा रूप रखने के लिए क्लिक करें।', 'फूल, पणती किंवा कोयरीसारखा आकार ठेवण्यासाठी क्लिक करा.'],
     text: ['Click to place words such as a festival greeting.', 'त्योहार की शुभकामना जैसे शब्द रखने के लिए क्लिक करें।', 'सणाच्या शुभेच्छांसारखे शब्द ठेवण्यासाठी क्लिक करा.'],
+    centre: ['Click to set where the next designs are centred. On the infinite board you can build many rangolis side by side, each with its own symmetry centre (orange cross).', 'अगले डिज़ाइन का केंद्र चुनने के लिए क्लिक करें। अनंत बोर्ड पर कई रंगोलियाँ अगल-बगल बनाएँ, हर एक का अपना केंद्र (नारंगी क्रॉस)।', 'पुढच्या डिझाइनचं केंद्र ठरवण्यासाठी क्लिक करा. अमर्याद बोर्डवर अनेक रांगोळ्या शेजारी शेजारी काढा, प्रत्येकीचं स्वतःचं केंद्र (नारिंगी क्रॉस).'],
     pan: ['Drag to move around the canvas. You can also hold Space and drag.', 'कैनवास पर घूमने के लिए खींचें। स्पेस दबाकर भी खींच सकते हैं।', 'कॅनव्हासवर फिरण्यासाठी ओढा. स्पेस दाबूनही ओढू शकता.']
   };
   const BAR_HELP = [
@@ -1926,7 +2004,7 @@ RM.addStrings({
     await new Promise(resolve => {
       const frame = () => {
         const t = performance.now() - t0, target = Math.min(items.length, Math.ceil(items.length * Math.min(1, t / build)));
-        while (drawn < target) { const [li, it] = items[drawn++]; RM.drawItem(layers[li].getContext('2d'), it, H / 2); }
+        while (drawn < target) { const [li, it] = items[drawn++], em = RM.exportMap(doc, W, H); RM.drawItem(layers[li].getContext('2d'), it, em.R, { cx: em.cx, cy: em.cy }); }
         RM.paintBackground(g, doc, W, H);
         doc.layers.forEach((L, i) => { if (L.visible === false) return; g.globalAlpha = L.opacity != null ? L.opacity : 1; g.globalCompositeOperation = L.blend || 'source-over'; g.drawImage(layers[i], 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; });
         if (onProgress) onProgress(Math.min(1, t / total));
@@ -2422,6 +2500,7 @@ RM.addStrings({
   refSec: ['Reference image', 'संदर्भ चित्र', 'संदर्भ चित्र'], refHelp: ['Place a photo under your drawing to trace it. It is never exported.', 'उतारने के लिए अपनी ड्रॉइंग के नीचे फ़ोटो रखें। यह कभी एक्सपोर्ट नहीं होती।', 'गिरवण्यासाठी चित्राखाली फोटो ठेवा. तो कधीही निर्यात होत नाही.'],
   refLoad: ['Choose photo', 'फ़ोटो चुनें', 'फोटो निवडा'], refRemove: ['Remove', 'हटाएँ', 'काढा'], refShow: ['Show reference', 'संदर्भ दिखाएँ', 'संदर्भ दाखवा'], refScale: ['Scale', 'आकार', 'प्रमाण'],
   blendMode: ['Blend mode', 'ब्लेंड मोड', 'मिश्रण पद्धत'], bl_normal: ['Normal', 'सामान्य', 'सामान्य'], bl_multiply: ['Multiply', 'मल्टीप्लाई', 'गुणाकार'], bl_screen: ['Screen', 'स्क्रीन', 'स्क्रीन'], bl_overlay: ['Overlay', 'ओवरले', 'आच्छादन'], bl_darken: ['Darken', 'गहरा', 'गडद'], bl_lighten: ['Lighten', 'हल्का', 'फिकट'], bl_dodge: ['Colour dodge', 'कलर डॉज', 'रंग डॉज'], bl_soft: ['Soft light', 'हल्की रोशनी', 'मंद प्रकाश'],
+  t_centre: ['Centre', 'केंद्र', 'केंद्र'], h_centre: ['Move centre', 'केंद्र बदला', 'केंद्र हलवा'], shapeInfinite: ['Infinite', 'अनंत', 'अनंत'], shapeInfiniteL: ['Endless board — pan and zoom anywhere, like draw.io', 'अंतहीन बोर्ड — कहीं भी खिसकाएँ और ज़ूम करें', 'अमर्याद बोर्ड — कुठेही सरकवा आणि झूम करा'], boardOn: ['Infinite board: wheel to pan, Ctrl + wheel to zoom, O to place a new centre', 'अनंत बोर्ड: व्हील से खिसकाएँ, Ctrl + व्हील से ज़ूम, O से नया केंद्र', 'अमर्याद बोर्ड: व्हीलने सरकवा, Ctrl + व्हीलने झूम, O ने नवीन केंद्र'], fillBoard: ['Fill needs edges — on the infinite board use shapes with Paint fill instead', 'अनंत बोर्ड पर भराव नहीं — आकृतियों में रंग भरें', 'अमर्याद बोर्डवर भराव नाही — आकारांमध्ये रंग भरा'],
   shapeFit: ['Fit', 'फ़िट', 'बसवा'], shapeFitL: ['Fit this screen', 'इस स्क्रीन के अनुसार', 'या स्क्रीननुसार'],
   galTitle: ['My designs', 'मेरे डिज़ाइन', 'माझ्या नक्षी'], saveAsNew: ['Save a copy as new design', 'नई प्रति के रूप में सहेजें', 'नवीन प्रत म्हणून जतन करा'], rename: ['Rename', 'नाम बदलें', 'नाव बदला'], openD: ['Open', 'खोलें', 'उघडा'],
   galNote: ['Designs are kept in this browser. Export a project file to keep a backup or move to another device.', 'डिज़ाइन इसी ब्राउज़र में रहते हैं। बैकअप या दूसरे डिवाइस के लिए प्रोजेक्ट फ़ाइल एक्सपोर्ट करें।', 'नक्षी याच ब्राउझरमध्ये राहतात. बॅकअप किंवा दुसऱ्या डिव्हाइससाठी प्रोजेक्ट फाइल निर्यात करा.'],
@@ -2445,9 +2524,9 @@ const Studio = (() => {
     peacock: ['#0B3C5D', '#1B998B', '#3BB273', '#C9E265', '#F2C14E', '#2E86AB', '#5C2A9D', '#E0F2E9', '#123524', '#F7F3E3']
   };
   const BGS = ['#1C1426', '#0E1A2B', '#A8482B', '#7A1F2B', '#F3EEE6', '#E9D8B4', '#1D3B2F', '#111111'];
-  const TOOLS = [['select', 'V'], ['brush', 'B'], ['eraser', 'E'], ['fill', 'F'], ['eyedrop', 'I'], ['line', 'L'], ['curve', 'U'], ['circle', 'C'], ['petal', 'P'], ['poly', 'G'], ['dot', 'D'], ['stamp', 'K'], ['text', 'T'], ['pan', 'H']];
-  const KEYTOOL = { v: 'select', b: 'brush', e: 'eraser', f: 'fill', i: 'eyedrop', l: 'line', u: 'curve', c: 'circle', p: 'petal', g: 'poly', d: 'dot', k: 'stamp', t: 'text', h: 'pan' };
-  const ICON = { select: 'select', brush: 'brush', eraser: 'eraser', fill: 'bucket', eyedrop: 'eyedrop', line: 'line', curve: 'curve', circle: 'circle', petal: 'petal', poly: 'poly', dot: 'dot', stamp: 'stamp', text: 'text', pan: 'hand' };
+  const TOOLS = [['select', 'V'], ['brush', 'B'], ['eraser', 'E'], ['fill', 'F'], ['eyedrop', 'I'], ['line', 'L'], ['curve', 'U'], ['circle', 'C'], ['petal', 'P'], ['poly', 'G'], ['dot', 'D'], ['stamp', 'K'], ['text', 'T'], ['centre', 'O'], ['pan', 'H']];
+  const KEYTOOL = { v: 'select', b: 'brush', e: 'eraser', f: 'fill', i: 'eyedrop', l: 'line', u: 'curve', c: 'circle', p: 'petal', g: 'poly', d: 'dot', k: 'stamp', t: 'text', o: 'centre', h: 'pan' };
+  const ICON = { select: 'select', brush: 'brush', eraser: 'eraser', fill: 'bucket', eyedrop: 'eyedrop', line: 'line', curve: 'curve', circle: 'circle', petal: 'petal', poly: 'poly', dot: 'dot', stamp: 'stamp', text: 'text', centre: 'target', pan: 'hand' };
   const BLENDS = [['source-over', 'bl_normal'], ['multiply', 'bl_multiply'], ['screen', 'bl_screen'], ['overlay', 'bl_overlay'], ['darken', 'bl_darken'], ['lighten', 'bl_lighten'], ['color-dodge', 'bl_dodge'], ['soft-light', 'bl_soft']];
   const SHAPES = ['line', 'curve', 'circle', 'petal', 'poly'];
   const PRESETS = [
@@ -2489,15 +2568,17 @@ const Studio = (() => {
     const b = (c, n, x) => Object.assign({ c, w: 4, o: 1, n, m: true, rot: 0 }, x || {});
     L1.items = [RM.motif('ring', 0.93, 0, b('#FFD23F', 1, { w: 3 })), RM.motif('scallops', 0.83, 0, b('#FF7F11', 24, { w: 4 })), RM.motif('petals', 0.62, 0.26, b('#D7263D', 12, { paint: 'radial', c2: '#FF9F1C' })), RM.motif('petals', 0.62, 0.15, b('#FFD23F', 12, { rot: 15 })), RM.motif('diamonds', 0.38, 0.1, b('#1B998B', 12, { fx: { glow: true } })), RM.motif('petals', 0.2, 0.2, b('#FFFFFF', 8))].filter(Boolean);
     L2.items = [RM.motif('dots', 0.73, 0.05, b('#FFFFFF', 24, { fx: { glitter: true } })), RM.motif('dots', 0.47, 0.04, b('#FFD23F', 12, { rot: 15 })), { t: 'dot', pts: [[0, 0]], w: 40, c: '#FFD23F', n: 1, m: false, o: 1, rot: 0, sym: 'radial', sd: 3, fx: { metal: true } }].filter(Boolean);
-    d.active = L2.id; d.fit = true;
+    d.active = L2.id; d.fit = true; d.board = true;
     return d;
   }
-  function loadDoc() { const d = RM.store.get('rm-studio-doc', null); if (RM.validDoc(d) && d.layers.length) { RM.migrate(d); if (!d.layers.some(L => L.id === d.active)) d.active = d.layers[d.layers.length - 1].id; return d; } return starter(); }
+  // Studio opens designs on the infinite board unless a fixed canvas shape was chosen
+  function toStudio(d) { RM.migrate(d); if (d.board === undefined) d.board = true; return d; }
+  function loadDoc() { const d = RM.store.get('rm-studio-doc', null); if (RM.validDoc(d) && d.layers.length) { toStudio(d); if (!d.layers.some(L => L.id === d.active)) d.active = d.layers[d.layers.length - 1].id; return d; } return starter(); }
 
   /* ---------- history ---------- */
-  const snapshot = () => JSON.stringify({ bg: doc.bg, tex: doc.tex, ar: RM.aspectOf(doc), fit: !!doc.fit, layers: doc.layers, active: doc.active });
+  const snapshot = () => JSON.stringify({ bg: doc.bg, tex: doc.tex, ar: RM.aspectOf(doc), fit: !!doc.fit, board: !!doc.board, centre: doc.centre || [0, 0], layers: doc.layers, active: doc.active });
   function record(label, snap) { undoS.push({ s: snap || snapshot(), label }); if (undoS.length > 80) undoS.shift(); redoS = []; }
-  function restore(json) { const s = JSON.parse(json), oldAr = RM.aspectOf(doc); Object.assign(doc, s); clearSel(); R.setDoc(doc); if (RM.aspectOf(doc) !== oldAr) fit(); refresh(); persist(); }
+  function restore(json) { const s = JSON.parse(json), oldAr = RM.aspectOf(doc), oldB = !!doc.board; Object.assign(doc, s); clearSel(); R.setDoc(doc); if (!!doc.board !== oldB || (!doc.board && RM.aspectOf(doc) !== oldAr)) fit(); refresh(); persist(); }
   const undo = () => { if (!undoS.length) return; const e = undoS.pop(); redoS.push({ s: snapshot(), label: e.label }); restore(e.s); };
   const redo = () => { if (!redoS.length) return; const e = redoS.pop(); undoS.push({ s: snapshot(), label: e.label }); restore(e.s); };
   function persist() { clearTimeout(saveT); $('#sSaved').textContent = ''; saveT = setTimeout(() => { RM.store.set('rm-studio-doc', doc); galWrite(); $('#sSaved').textContent = '✓ ' + RM.t('savedLocal'); }, 500); }
@@ -2511,7 +2592,7 @@ const Studio = (() => {
 
   /* ---------- items from the current settings ---------- */
   function base() {
-    return { c: P.color, c2: P.c2, paint: P.paint === 'rainbow' ? 'solid' : P.paint, rb: P.paint === 'rainbow', pat: P.pat, w: P.w, o: P.o / 100, n: P.n, m: P.mirror, rot: P.rot, sym: P.sym, k: P.k, fx: Object.assign({}, P.fx), sd: RM.newSeed() };
+    return { c: P.color, c2: P.c2, paint: P.paint === 'rainbow' ? 'solid' : P.paint, rb: P.paint === 'rainbow', pat: P.pat, w: P.w, o: P.o / 100, n: P.n, m: P.mirror, rot: P.rot, sym: P.sym, k: P.k, fx: Object.assign({}, P.fx), sd: RM.newSeed(), ox: centre()[0], oy: centre()[1] };
   }
   function makeItem(p) {
     const b = base();
@@ -2532,6 +2613,18 @@ const Studio = (() => {
   }
   const snapOpts = () => ({ n: P.n, mirror: P.mirror, rot: P.rot, rings: P.rings, dots: P.dots ? P.dotsN : 0, sym: P.sym, k: P.k, ar: RM.aspectOf(doc) });
   const sp = p => (P.snap ? RM.snap(p, snapOpts()) : p);
+  const centre = () => (Array.isArray(doc.centre) ? doc.centre : [0, 0]);
+  const rel = p => { const c = centre(); return [p[0] - c[0], p[1] - c[1]]; };
+  // World point → coordinates relative to the active symmetry centre, snapped when Snap is on
+  function place(raw) {
+    const c = centre();
+    if (P.snap && P.dots) {
+      const st = 2 / P.dotsN, w = doc.board ? [Math.round(raw[0] / st) * st, Math.round(raw[1] / st) * st] : RM.snap(raw, snapOpts());
+      return [w[0] - c[0], w[1] - c[1]];
+    }
+    const r = rel(raw);
+    return P.snap ? RM.snap(r, Object.assign(snapOpts(), { dots: 0 })) : r;
+  }
   const pressureOf = e => (P.pr && (e.pointerType === 'pen' || (e.pressure > 0 && e.pressure !== 0.5)) ? Math.max(0.05, Math.min(1, e.pressure)) : null);
 
   /* ---------- selection ---------- */
@@ -2618,7 +2711,7 @@ const Studio = (() => {
         if (drag) { R.hidden = new Set(); R.renderAll(); drag = null; }
         pan = null; marq = null; R.marquee = null;
         const [a, b] = [...touches.values()];
-        pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, m: mid(a, b), z: V.zoom, px: V.panX, py: V.panY };
+        pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, m: mid(a, b), lm: mid(a, b), z: V.zoom, cz: R.cam.z, px: V.panX, py: V.panY };
         e.stopImmediatePropagation();
       }
     }, { capture: true });
@@ -2627,6 +2720,12 @@ const Studio = (() => {
       touches.set(e.pointerId, [e.clientX, e.clientY]);
       if (!pinch || touches.size < 2) return;
       const [a, b] = [...touches.values()], m = mid(a, b);
+      if (doc.board) {
+        const rect = work.getBoundingClientRect();
+        zoomTo(pinch.cz * (Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d), m[0] - rect.left - rect.width / 2, m[1] - rect.top - rect.height / 2);
+        panBy(m[0] - pinch.lm[0], m[1] - pinch.lm[1]); pinch.lm = m;
+        e.stopImmediatePropagation(); return;
+      }
       V.zoom = Math.max(0.25, Math.min(8, pinch.z * (Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d)));
       V.panX = pinch.px + m[0] - pinch.m[0]; V.panY = pinch.py + m[1] - pinch.m[1];
       applyView(); e.stopImmediatePropagation();
@@ -2637,7 +2736,7 @@ const Studio = (() => {
     work.addEventListener('pointerdown', e => {
       if (pinch) return;
       const panMode = P.tool === 'pan' || space || e.button === 1;
-      if (panMode) { pan = { x: e.clientX, y: e.clientY, px: V.panX, py: V.panY }; work.setPointerCapture && work.setPointerCapture(e.pointerId); work.classList.add('panning'); e.preventDefault(); return; }
+      if (panMode) { pan = { x: e.clientX, y: e.clientY, px: V.panX, py: V.panY, cam: Object.assign({}, R.cam) }; work.setPointerCapture && work.setPointerCapture(e.pointerId); work.classList.add('panning'); e.preventDefault(); return; }
       if (!st.contains(e.target) || e.button > 0) return;
       const L = active(), raw = R.toNorm(e);
       e.preventDefault();
@@ -2661,10 +2760,18 @@ const Studio = (() => {
         return;
       }
       if (P.tool === 'eyedrop') { pickColour(e); return; }
+      if (P.tool === 'centre') {
+        record('h_centre');
+        const q = place(raw), c = centre(), r3 = v => Math.round(v * 1000) / 1000;
+        doc.centre = [r3(q[0] + c[0]), r3(q[1] + c[1])];
+        guides(); persist(); syncHistory(); RM.sfx.soft && RM.sfx.soft();
+        return;
+      }
+      if (doc.board && P.tool === 'fill') { RM.toast(RM.t('fillBoard')); return; }
       if (L.locked) { RM.toast(RM.t('lockedMsg')); return; }
       if (L.visible === false) { RM.toast(RM.t('hiddenMsg')); return; }
       const free = P.tool === 'brush' || P.tool === 'eraser';
-      const pr = pressureOf(e), p0 = free ? raw : sp(raw);
+      const pr = pressureOf(e), p0 = free ? rel(raw) : place(raw);
       const it = makeItem(pr != null && free ? [p0[0], p0[1], pr] : p0);
       if (!it) return;
       if (it.t === 'dot' || it.t === 'stamp' || it.t === 'fill' || it.t === 'text') { commit(it); return; }
@@ -2673,10 +2780,14 @@ const Studio = (() => {
       R.drawLive(drawing);
     });
     work.addEventListener('pointermove', e => {
-      if (pan) { V.panX = pan.px + e.clientX - pan.x; V.panY = pan.py + e.clientY - pan.y; applyView(); return; }
+      if (pan) {
+        if (doc.board) { const Rp = camR(); setCam({ x: pan.cam.x - (e.clientX - pan.x) * pxK() / Rp, y: pan.cam.y - (e.clientY - pan.y) * pxK() / Rp }); }
+        else { V.panX = pan.px + e.clientX - pan.x; V.panY = pan.py + e.clientY - pan.y; applyView(); }
+        return;
+      }
       const raw = R.toNorm(e);
       const r = Math.hypot(raw[0], raw[1]), th = ((Math.atan2(raw[1], raw[0]) * 180) / Math.PI + 450) % 360;
-      $('#sPos').textContent = `r ${r.toFixed(2)} · θ ${th.toFixed(0)}°`;
+      $('#sPos').textContent = doc.board ? `x ${raw[0].toFixed(2)} · y ${raw[1].toFixed(2)}` : `r ${r.toFixed(2)} · θ ${th.toFixed(0)}°`;
       if (marq) { R.marquee = [marq.from[0], marq.from[1], raw[0], raw[1]]; R.drawLive([], sel); return; }
       if (drag) {
         const d = RM.xfDelta([raw[0] - drag.from[0], raw[1] - drag.from[1]], drag.x);
@@ -2690,11 +2801,11 @@ const Studio = (() => {
           const l = drawing._s, k = 1 - P.sm / 100, s = [l[0] + (raw[0] - l[0]) * k, l[1] + (raw[1] - l[1]) * k];
           drawing._s = s;
           const last = drawing.pts[drawing.pts.length - 1];
-          if (Math.hypot(s[0] - last[0], s[1] - last[1]) > 0.003) { const pr = pressureOf(e); drawing.pts.push(pr != null ? [s[0], s[1], pr] : s); }
-        } else drawing.pts[1] = sp(raw);
+          const q = rel(s); if (Math.hypot(q[0] - last[0], q[1] - last[1]) > 0.003) { const pr = pressureOf(e); drawing.pts.push(pr != null ? [q[0], q[1], pr] : q); }
+        } else drawing.pts[1] = place(raw);
         R.drawLive(drawing);
-      } else if (st.contains(e.target) && !['pan', 'select', 'fill', 'eyedrop', 'text'].includes(P.tool) && !space) {
-        const ghost = Object.assign(base(), { t: 'dot', pts: [sp(raw)], w: Math.max(P.w, 6), c: '#FF9F1C', o: 0.75, paint: 'solid', rb: false, fx: {} });
+      } else if (st.contains(e.target) && !['pan', 'select', 'fill', 'eyedrop', 'text', 'centre'].includes(P.tool) && !space) {
+        const ghost = Object.assign(base(), { t: 'dot', pts: [place(raw)], w: Math.max(P.w, 6), c: '#FF9F1C', o: 0.75, paint: 'solid', rb: false, fx: {} });
         R.drawLive([ghost], sel);
       }
     });
@@ -2726,6 +2837,11 @@ const Studio = (() => {
     work.addEventListener('wheel', e => {
       e.preventDefault();
       const rect = work.getBoundingClientRect(), mx = e.clientX - rect.left - rect.width / 2, my = e.clientY - rect.top - rect.height / 2;
+      if (doc.board) {
+        if (e.ctrlKey || e.metaKey) zoomTo(R.cam.z * Math.exp(-e.deltaY * 0.0025), mx, my);
+        else panBy(-(e.shiftKey ? e.deltaY : e.deltaX), e.shiftKey ? 0 : -e.deltaY);
+        return;
+      }
       zoomTo(V.zoom * Math.exp(-e.deltaY * 0.0015), mx, my);
     }, { passive: false });
   }
@@ -2749,8 +2865,16 @@ const Studio = (() => {
   }
 
   /* ---------- zoom & pan ---------- */
+  // Board helpers: canvas pixels per CSS pixel, and pixels per world unit
+  const pxK = () => R.W / ($('#sWork').getBoundingClientRect().width || R.W);
+  const setCam = c => { R.setCamera(c); persist(); };
+  const zoomNow = () => (doc.board ? R.cam.z : V.zoom);
+  const camR = () => (R.S / 2) * R.cam.z;
+  function panBy(dx, dy) { const Rp = camR(); setCam({ x: R.cam.x - dx * pxK() / Rp, y: R.cam.y - dy * pxK() / Rp }); }
   function fitBase() {
-    const w = $('#sWork').getBoundingClientRect();
+    const w = $('#sWork').getBoundingClientRect(), stk = $('#sStack');
+    stk.classList.toggle('board', !!doc.board); $('#sWork').classList.toggle('board', !!doc.board);
+    if (doc.board) { stk.style.width = Math.floor(w.width) + 'px'; stk.style.height = Math.floor(w.height) + 'px'; return; }
     // "Fit" shape: the canvas takes the proportions of this device's workspace
     if (doc.fit && w.width > 50 && w.height > 50) {
       const want = Math.max(0.5, Math.min(2.5, (w.width - 16) / (w.height - 16)));
@@ -2760,15 +2884,37 @@ const Studio = (() => {
     V.base = Math.max(200, Math.floor(Math.min(w.height - 16, (w.width - 16) / ar)));
     const s = $('#sStack'); s.style.width = Math.round(V.base * ar) + 'px'; s.style.height = V.base + 'px';
   }
-  function applyView() { $('#sZoomer').style.transform = `translate(${V.panX}px, ${V.panY}px) scale(${V.zoom})`; $('#sZoomVal').textContent = Math.round(V.zoom * 100) + '%'; }
+  function applyView() {
+    if (doc.board) { $('#sZoomer').style.transform = 'none'; $('#sZoomVal').textContent = Math.round(R.cam.z * 100) + '%'; return; }
+    $('#sZoomer').style.transform = `translate(${V.panX}px, ${V.panY}px) scale(${V.zoom})`; $('#sZoomVal').textContent = Math.round(V.zoom * 100) + '%';
+  }
   function zoomTo(z, mx, my) {
+    if (doc.board) {
+      // keep the world point under the pointer still
+      const ox = (mx || 0) * pxK(), oy = (my || 0) * pxK(), w0 = R.worldAt(R.W / 2 + ox, R.S / 2 + oy);
+      const nz = Math.max(0.05, Math.min(40, z)), Rn = (R.S / 2) * nz;
+      setCam({ z: nz, x: w0[0] - ox / Rn, y: w0[1] - oy / Rn }); applyView();
+      return;
+    }
     z = Math.max(0.25, Math.min(8, z));
     const k = z / V.zoom; mx = mx || 0; my = my || 0;
     V.panX = mx - (mx - V.panX) * k; V.panY = my - (my - V.panY) * k; V.zoom = z;
     applyView();
     clearTimeout(resT); resT = setTimeout(() => { R.resize(); showSel(); }, 220);
   }
-  const fit = () => { V.zoom = 1; V.panX = 0; V.panY = 0; fitBase(); applyView(); requestAnimationFrame(() => { R.resize(true); showSel(); }); };
+  const fit = () => {
+    V.zoom = 1; V.panX = 0; V.panY = 0; fitBase(); applyView();
+    requestAnimationFrame(() => {
+      R.resize(true);
+      if (doc.board) fitContent();
+      showSel();
+    });
+  };
+  // Infinite board: frame everything that has been drawn
+  function fitContent() {
+    const b = RM.boardBounds(doc), Rn = Math.min(R.W / (b[2] - b[0]), R.S / (b[3] - b[1])) * 0.92;
+    setCam({ x: (b[0] + b[2]) / 2, y: (b[1] + b[3]) / 2, z: Rn / (R.S / 2) }); applyView();
+  }
 
   /* ---------- controls registry ---------- */
   const syncers = [];
@@ -2791,7 +2937,7 @@ const Studio = (() => {
     box.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { P[key] = b.dataset.v; savePrefs(); show(); if (after) after(); });
   }
   const syncControls = () => syncers.forEach(f => f());
-  const guides = () => R.renderGuides({ radial: P.radial, rings: P.rings, dots: P.dots ? P.dotsN : 0, n: P.n, mirror: P.mirror, rot: P.rot, sym: P.sym, k: P.k });
+  const guides = () => R.renderGuides({ radial: P.radial, rings: P.rings, dots: P.dots ? P.dotsN : 0, n: P.n, mirror: P.mirror, rot: P.rot, sym: P.sym, k: P.k, centre: centre() });
 
   /* ---------- colour ---------- */
   const cur = () => (P.slot === 2 ? P.c2 : P.color);
@@ -2934,7 +3080,7 @@ const Studio = (() => {
     $('#sHd').closest('.s-field').hidden = t === 'brush' && (dab || P.brush === 'airbrush');
     $('#sSp').closest('.s-field').hidden = !(t === 'brush' && dab);
     $('#sBrushes').hidden = t === 'eraser';
-    $('#sShapeSec').hidden = br || ['select', 'pan', 'eyedrop', 'text'].includes(t);
+    $('#sShapeSec').hidden = br || ['select', 'pan', 'eyedrop', 'text', 'centre'].includes(t);
     $('#sTextSec').hidden = t !== 'text';
     $('#sFillRow').hidden = !['circle', 'petal', 'poly'].includes(t);
     $('#sShapeW').hidden = !['line', 'curve', 'circle', 'petal', 'poly', 'dot'].includes(t);
@@ -3042,7 +3188,7 @@ const Studio = (() => {
     const st = (type, r, sz, c, n, x) => Object.assign(b(c, n, x), { t: 'stamp', st: type, pts: [[0, -r]], sz, sym: 'radial', sd: RM.newSeed() });
     const mk = (bg, layers) => {
       const d = RM.newDoc(bg, RM.t('baseL'));
-      d.ar = RM.aspectOf(doc); d.fit = !!doc.fit;
+      d.ar = RM.aspectOf(doc); d.fit = !!doc.fit; d.board = doc.board !== false;
       d.layers = layers.map((items, i) => Object.assign(RM.newLayer(RM.t(i ? 'detailsL' : 'baseL')), { items: items.filter(Boolean) }));
       d.active = d.layers[d.layers.length - 1].id;
       return d;
@@ -3143,7 +3289,7 @@ const Studio = (() => {
     const d = RM.store.get('rm-design-' + id, null);
     if (!RM.validDoc(d) || !d.layers.length) { RM.toast(RM.t('openFail')); return false; }
     galWrite();
-    RM.migrate(d);
+    toStudio(d);
     if (!d.layers.some(L => L.id === d.active)) d.active = d.layers[d.layers.length - 1].id;
     P.docId = id; savePrefs();
     replaceDoc(d); persist();
@@ -3213,7 +3359,7 @@ const Studio = (() => {
         try {
           const d = JSON.parse(fr.result);
           if (!RM.validDoc(d) || !d.layers.length) throw new Error('bad');
-          RM.migrate(d);
+          toStudio(d);
           d.layers.forEach(L => { L.id = L.id || RM.newLayer('x').id; L.name = String(L.name || 'Layer'); });
           if (!d.layers.some(L => L.id === d.active)) d.active = d.layers[d.layers.length - 1].id;
           record('h_open'); Object.assign(doc, { bg: d.bg, tex: !!d.tex, ar: RM.aspectOf(d), layers: d.layers, active: d.active }); clearSel(); R.setDoc(doc); fit(); refresh(); persist(); RM.toast(RM.t('opened'));
@@ -3291,8 +3437,8 @@ const Studio = (() => {
       else if (k === '[' || k === ']') { P.w = Math.max(1, Math.min(80, P.w + (k === ']' ? 1 : -1) * Math.max(1, Math.round(P.w * 0.15)))); savePrefs(); syncControls(); }
       else if (k === '0') fit();
       else if (k === '\\') togglePanel();
-      else if (k === '+' || k === '=') zoomTo(V.zoom * 1.25);
-      else if (k === '-') zoomTo(V.zoom / 1.25);
+      else if (k === '+' || k === '=') zoomTo(zoomNow() * 1.25);
+      else if (k === '-') zoomTo(zoomNow() / 1.25);
       else if (k === '?') help();
     });
     addEventListener('keyup', e => { if (e.code === 'Space') { space = false; $('#sWork').classList.toggle('panning', P.tool === 'pan'); } });
@@ -3312,12 +3458,13 @@ const Studio = (() => {
   const SHAPE_LABELS = ['1:1', '4:3', '3:2', '16:9', '2:1'];
   function renderShapes() {
     const box = $('#sShape');
-    box.innerHTML = `<button type="button" data-ar="fit" aria-pressed="${!!doc.fit}" title="${RM.t('shapeFitL')}">${RM.t('shapeFit')}</button>` + RM.ASPECTS.map((a, i) => `<button type="button" data-ar="${a}" aria-pressed="${!doc.fit && Math.abs(a - RM.aspectOf(doc)) < 0.01}">${SHAPE_LABELS[i]}</button>`).join('');
+    box.innerHTML = `<button type="button" data-ar="board" aria-pressed="${!!doc.board}" title="${RM.t('shapeInfiniteL')}">∞ ${RM.t('shapeInfinite')}</button><button type="button" data-ar="fit" aria-pressed="${!doc.board && !!doc.fit}" title="${RM.t('shapeFitL')}">${RM.t('shapeFit')}</button>` + RM.ASPECTS.map((a, i) => `<button type="button" data-ar="${a}" aria-pressed="${!doc.board && !doc.fit && Math.abs(a - RM.aspectOf(doc)) < 0.01}">${SHAPE_LABELS[i]}</button>`).join('');
     box.querySelectorAll('[data-ar]').forEach(b => b.onclick = () => {
-      if (b.dataset.ar === 'fit') { if (doc.fit) return; record('h_shape'); doc.fit = true; fit(); renderShapes(); persist(); syncHistory(); return; }
+      if (b.dataset.ar === 'board') { if (doc.board) return; record('h_shape'); doc.board = true; R.setDoc(doc); fit(); renderShapes(); persist(); syncHistory(); RM.toast(RM.t('boardOn')); return; }
+      if (b.dataset.ar === 'fit') { if (doc.fit && !doc.board) return; record('h_shape'); doc.board = false; doc.fit = true; R.setDoc(doc); fit(); renderShapes(); persist(); syncHistory(); return; }
       const a = Number(b.dataset.ar);
-      if (!doc.fit && Math.abs(a - RM.aspectOf(doc)) < 0.01) return;
-      record('h_shape'); doc.fit = false; doc.ar = a; R.setDoc(doc); fit(); renderShapes(); persist(); syncHistory();
+      if (!doc.board && !doc.fit && Math.abs(a - RM.aspectOf(doc)) < 0.01) return;
+      record('h_shape'); doc.board = false; doc.fit = false; doc.ar = a; R.setDoc(doc); fit(); renderShapes(); persist(); syncHistory();
     });
   }
   function renderBgSwatches() {
@@ -3401,7 +3548,7 @@ const Studio = (() => {
     $('#sTex').addEventListener('change', e => { record('h_bg'); doc.tex = e.target.checked; R.composite(); persist(); syncHistory(); });
     bindLayers(); bindFiles();
     $('#sUndo').onclick = undo; $('#sRedo').onclick = redo;
-    $('#sZoomIn').onclick = () => zoomTo(V.zoom * 1.25); $('#sZoomOut').onclick = () => zoomTo(V.zoom / 1.25); $('#sFit').onclick = fit;
+    $('#sZoomIn').onclick = () => zoomTo(zoomNow() * 1.25); $('#sZoomOut').onclick = () => zoomTo(zoomNow() / 1.25); $('#sFit').onclick = fit;
     $('#sHelp').onclick = help;
     $('#sPanel').onclick = togglePanel;
     $('#sEdge').onclick = togglePanel;
